@@ -274,8 +274,18 @@
             
             // Enhanced Error Handling
             video.addEventListener('error', (e) => {
-                console.error("Error loading video:", video.error);
-                alert("Video failed to load. Check console for details. (Format/Size issue?)");
+                const err = video.error;
+                let msg = "Unknown Error";
+                if (err) {
+                    switch (err.code) {
+                        case 1: msg = "Aborted by user"; break;
+                        case 2: msg = "Network Error (Size/Connection)"; break;
+                        case 3: msg = "Decoding Error (Corrupted/Codec)"; break;
+                        case 4: msg = "Format Not Supported"; break;
+                    }
+                }
+                console.error("Error loading video:", err);
+                alert(`Video failed: ${msg} (Code: ${err ? err.code : 'N/A'})`);
             });
 
             video.play().catch(e => console.warn("Video autoplay blocked", e));
