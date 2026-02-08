@@ -315,37 +315,22 @@
         }
 
         function loadWorldCubeMap() {
-            // 1. Create the Box (Cube)
-            // We use BackSide material, so no need to invert geometry scale
-            const geometry = new THREE.BoxGeometry(500, 500, 500);
-            // geometry.scale(-1, 1, 1); // REMOVED: Don't invert if using BackSide
+            // Use Three.js native CubeTexture for best quality and correct mapping
+            const loader = new THREE.CubeTextureLoader();
+            loader.setPath('./assets/');
 
-            // 2. Load the 6 images
-            const loader = new THREE.TextureLoader();
-            const loadTex = (path) => loader.load(path, undefined, undefined, (e) => console.error("Texture error:", path, e));
-
-            const textures = [
-                loadTex('./assets/px.jpg'), // Right
-                loadTex('./assets/nx.jpg'), // Left
-                loadTex('./assets/py.jpg'), // Top
-                loadTex('./assets/ny.jpg'), // Bottom
-                loadTex('./assets/pz.jpg'), // Front
-                loadTex('./assets/nz.jpg')  // Back
-            ];
-
-            // 3. Create a material for each face
-            const materials = [];
-            for (let i = 0; i < 6; i++) {
-                materials.push(new THREE.MeshBasicMaterial({ map: textures[i], side: THREE.BackSide }));
-            }
-
-            const mesh = new THREE.Mesh(geometry, materials);
+            // Standard order: px, nx, py, ny, pz, nz
+            // This handles all the edge clamping and orientation automatically
+            const texture = loader.load([
+                'px.jpg', 'nx.jpg',
+                'py.jpg', 'ny.jpg',
+                'pz.jpg', 'nz.jpg'
+            ]);
             
-            const worldGroup = new THREE.Group();
-            worldGroup.add(mesh);
-
-            scene.add(worldGroup);
-            currentWorldObject = worldGroup;
+            scene.background = texture;
+            
+            // We don't need a mesh object for scene.background
+            currentWorldObject = null; 
             currentWorldType = 'cubemap';
             updateUIButton("Panorama (CubeMap)");
         }
