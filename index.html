@@ -222,8 +222,16 @@
                 currentWorldObject.traverse((child) => {
                     if (child.isMesh) {
                         child.geometry.dispose();
-                        if (child.material.map) child.material.map.dispose();
-                        child.material.dispose();
+                        
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat.map) mat.map.dispose();
+                                mat.dispose();
+                            });
+                        } else {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
                     }
                 });
                 if (currentWorldType === 'video') {
@@ -306,6 +314,40 @@
             updateUIButton("Video");
         }
 
+        function loadWorldCubeMap() {
+            // 1. Create the Box (Cube) instead of Sphere
+            const geometry = new THREE.BoxGeometry(500, 500, 500);
+            geometry.scale(-1, 1, 1); // Invert it so we see the inside
+
+            // 2. Load the 6 images
+            // NOTE: You must add these 6 files to your assets folder!
+            // Naming convention: px (pos x), nx (neg x), py (pos y), etc.
+            const textures = [
+                new THREE.TextureLoader().load('./assets/px.jpg'), // Right
+                new THREE.TextureLoader().load('./assets/nx.jpg'), // Left
+                new THREE.TextureLoader().load('./assets/py.jpg'), // Top
+                new THREE.TextureLoader().load('./assets/ny.jpg'), // Bottom
+                new THREE.TextureLoader().load('./assets/pz.jpg'), // Front
+                new THREE.TextureLoader().load('./assets/nz.jpg')  // Back
+            ];
+
+            // 3. Create a material for each face
+            const materials = [];
+            for (let i = 0; i < 6; i++) {
+                materials.push(new THREE.MeshBasicMaterial({ map: textures[i], side: THREE.BackSide }));
+            }
+
+            const mesh = new THREE.Mesh(geometry, materials);
+            
+            const worldGroup = new THREE.Group();
+            worldGroup.add(mesh);
+
+            scene.add(worldGroup);
+            currentWorldObject = worldGroup;
+            currentWorldType = 'cubemap';
+            updateUIButton("Panorama (CubeMap)");
+        }
+
         function loadWorldCube() {
             // AR Mode: Clear background to see real world
             scene.background = null; 
@@ -340,6 +382,8 @@
             if (currentWorldType === 'panorama') {
                 loadWorldVideo();
             } else if (currentWorldType === 'video') {
+                loadWorldCubeMap();
+            } else if (currentWorldType === 'cubemap') {
                 loadWorldCube();
             } else {
                 loadWorldPanorama();
