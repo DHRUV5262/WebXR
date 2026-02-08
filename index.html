@@ -192,7 +192,7 @@
             // 4. Add ARButton (replaces VRButton to support Passthrough)
             // This button handles entering the Immersive AR session
             document.body.appendChild(ARButton.createButton(renderer, { 
-                requiredFeatures: ['hit-test'],
+                requiredFeatures: ['hit-test', 'local-floor'],
                 optionalFeatures: ['dom-overlay'], 
                 domOverlay: { root: document.body } 
             }));
@@ -228,6 +228,7 @@
         }
 
         function onSelect() {
+            // Only trigger if we are in Cube mode
             if (currentWorldType === 'cube' && currentWorldObject) {
                 // Interaction: Check if we tapped the cube
                 // We use a Raycaster from the controller position
@@ -239,31 +240,26 @@
                 raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
                 // Check intersection with the cube
-                // currentWorldObject is the Group, child 0 is the Mesh
                 const cube = currentWorldObject.children[0];
                 if (cube) {
                     const intersects = raycaster.intersectObject(cube);
                     
                     if (intersects.length > 0) {
                         // HIT! Apply "Jump" force
-                        if (!cube.userData.velocity) cube.userData.velocity = new THREE.Vector3();
-                        cube.userData.velocity.y = 5.0; // Jump up
-                        cube.userData.velocity.x = (Math.random() - 0.5) * 2; // Random side push
-                        cube.userData.velocity.z = (Math.random() - 0.5) * 2;
-                        
-                        // Change color on hit
-                        cube.material.color.setHex(Math.random() * 0xffffff);
-                        return;
+                        applyJump(cube);
                     }
                 }
-
-                // If we didn't hit the cube, maybe we want to teleport it to the reticle?
-                if (reticle.visible && cube) {
-                    cube.position.setFromMatrixPosition(reticle.matrix);
-                    cube.position.y += 0.5; // Drop from slightly above
-                    cube.userData.velocity.set(0, 0, 0); // Reset velocity
-                }
             }
+        }
+        
+        function applyJump(cube) {
+             if (!cube.userData.velocity) cube.userData.velocity = new THREE.Vector3();
+             cube.userData.velocity.y = 5.0; // Jump up
+             cube.userData.velocity.x = (Math.random() - 0.5) * 2; // Random side push
+             cube.userData.velocity.z = (Math.random() - 0.5) * 2;
+             
+             // Change color on hit
+             cube.material.color.setHex(Math.random() * 0xffffff);
         }
 
         function onWindowResize() {
@@ -448,6 +444,22 @@
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
 
+                // 1. Controller Input (Poll for 'A' button)
+                // Check input sources for gamepads
+                for (const source of session.inputSources) {
+                    if (source.gamepad) {
+                        // Button 4 or 5 is usually A/X on Touch controllers
+                        // We check if it is pressed.
+                        // To avoid rapid-fire, we could store state, but for random jumping it's okay to be spammy or we can check just one frame.
+                        // A simple way is to check if pressed and add a cooldown or just let it fly.
+                        // Let's just check if pressed.
+                        if (source.gamepad.buttons[4] && source.gamepad.buttons[4].pressed) {
+                             const cube = currentWorldObject.children[0];
+                             if (cube) applyJump(cube);
+                        }
+                    }
+                }
+
                 if (hitTestSourceRequested === false) {
                     session.requestReferenceSpace('viewer').then((referenceSpace) => {
                         session.requestHitTestSource({ space: referenceSpace }).then((source) => {
@@ -487,18 +499,20 @@
                     // Apply Velocity
                     cube.position.addScaledVector(cube.userData.velocity, delta);
                     
-                    // Simple Rotation
-                    cube.rotation.x += 0.01;
-                    cube.rotation.y += 0.01;
+                    // Remove constant rotation
+                    // cube.rotation.x += 0.01;
+                    // cube.rotation.y += 0.01;
 
-                    // Floor Collision (Simple: If reticle is visible, use its Y, else default to -1)
-                    let floorY = -1.5; // Default floor if no AR hit
-                    if (reticle.visible) {
-                        const position = new THREE.Vector3();
-                        position.setFromMatrixPosition(reticle.matrix);
-                        floorY = position.y;
-                    }
-
+                    // Floor Collision
+                    // We use y=0 as the ground (local-floor).
+                    // If reticle is visible, we *could* use it to spawn, but for physics we stick to the floor plane.
+                    // However, to prevent it falling through the floor if local-floor is off, we keep a safe floor.
+                    
+                    // If the user wants "current ground that it can see", strictly speaking that's the reticle.
+                    // But to avoid "wall attachment", we should only use the reticle's Y if it looks like a floor (normal pointing up).
+                    // For now, let's use y=0 (real world floor) as the primary ground.
+                    let floorY = 0; 
+                    
                     // Check collision with floor
                     // Cube height is 0.3, so center is 0.15 above bottom
                     if (cube.position.y - 0.15 < floorY) {
