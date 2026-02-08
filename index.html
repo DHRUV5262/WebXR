@@ -271,6 +271,13 @@
             video.loop = true;
             video.muted = true; 
             video.playsInline = true;
+            
+            // Enhanced Error Handling
+            video.addEventListener('error', (e) => {
+                console.error("Error loading video:", video.error);
+                alert("Video failed to load. Check console for details. (Format/Size issue?)");
+            });
+
             video.play().catch(e => console.warn("Video autoplay blocked", e));
 
             const texture = new THREE.VideoTexture(video);
