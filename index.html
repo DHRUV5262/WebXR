@@ -315,20 +315,22 @@
         }
 
         function loadWorldCubeMap() {
-            // 1. Create the Box (Cube) instead of Sphere
+            // 1. Create the Box (Cube)
+            // We use BackSide material, so no need to invert geometry scale
             const geometry = new THREE.BoxGeometry(500, 500, 500);
-            geometry.scale(-1, 1, 1); // Invert it so we see the inside
+            // geometry.scale(-1, 1, 1); // REMOVED: Don't invert if using BackSide
 
             // 2. Load the 6 images
-            // NOTE: You must add these 6 files to your assets folder!
-            // Naming convention: px (pos x), nx (neg x), py (pos y), etc.
+            const loader = new THREE.TextureLoader();
+            const loadTex = (path) => loader.load(path, undefined, undefined, (e) => console.error("Texture error:", path, e));
+
             const textures = [
-                new THREE.TextureLoader().load('./assets/px.jpg'), // Right
-                new THREE.TextureLoader().load('./assets/nx.jpg'), // Left
-                new THREE.TextureLoader().load('./assets/py.jpg'), // Top
-                new THREE.TextureLoader().load('./assets/ny.jpg'), // Bottom
-                new THREE.TextureLoader().load('./assets/pz.jpg'), // Front
-                new THREE.TextureLoader().load('./assets/nz.jpg')  // Back
+                loadTex('./assets/px.jpg'), // Right
+                loadTex('./assets/nx.jpg'), // Left
+                loadTex('./assets/py.jpg'), // Top
+                loadTex('./assets/ny.jpg'), // Bottom
+                loadTex('./assets/pz.jpg'), // Front
+                loadTex('./assets/nz.jpg')  // Back
             ];
 
             // 3. Create a material for each face
