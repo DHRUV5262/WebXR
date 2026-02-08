@@ -137,6 +137,10 @@
         let camera, scene, renderer;
         let currentWorldObject = null;
         let currentWorldType = 'none';
+        let controller;
+        let reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
         
         const ASSETS = {
             panorama: './assets/panorama.jpg',
@@ -188,9 +192,24 @@
             // 4. Add ARButton (replaces VRButton to support Passthrough)
             // This button handles entering the Immersive AR session
             document.body.appendChild(ARButton.createButton(renderer, { 
+                requiredFeatures: ['hit-test'],
                 optionalFeatures: ['dom-overlay'], 
                 domOverlay: { root: document.body } 
             }));
+
+            // 4.1 Setup Controller for Interaction
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect);
+            scene.add(controller);
+
+            // 4.2 Setup Reticle for Hit Testing
+            reticle = new THREE.Mesh(
+                new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial()
+            );
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
 
             // 5. Basic Lights
             const light = new THREE.HemisphereLight(0xffffff, 0x444444, 3);
@@ -206,6 +225,45 @@
             
             // Start loop immediately so it's rendering when we fade in
             animate();
+        }
+
+        function onSelect() {
+            if (currentWorldType === 'cube' && currentWorldObject) {
+                // Interaction: Check if we tapped the cube
+                // We use a Raycaster from the controller position
+                const tempMatrix = new THREE.Matrix4();
+                tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+                // Check intersection with the cube
+                // currentWorldObject is the Group, child 0 is the Mesh
+                const cube = currentWorldObject.children[0];
+                if (cube) {
+                    const intersects = raycaster.intersectObject(cube);
+                    
+                    if (intersects.length > 0) {
+                        // HIT! Apply "Jump" force
+                        if (!cube.userData.velocity) cube.userData.velocity = new THREE.Vector3();
+                        cube.userData.velocity.y = 5.0; // Jump up
+                        cube.userData.velocity.x = (Math.random() - 0.5) * 2; // Random side push
+                        cube.userData.velocity.z = (Math.random() - 0.5) * 2;
+                        
+                        // Change color on hit
+                        cube.material.color.setHex(Math.random() * 0xffffff);
+                        return;
+                    }
+                }
+
+                // If we didn't hit the cube, maybe we want to teleport it to the reticle?
+                if (reticle.visible && cube) {
+                    cube.position.setFromMatrixPosition(reticle.matrix);
+                    cube.position.y += 0.5; // Drop from slightly above
+                    cube.userData.velocity.set(0, 0, 0); // Reset velocity
+                }
+            }
         }
 
         function onWindowResize() {
@@ -341,26 +399,24 @@
             
             const worldGroup = new THREE.Group();
             
-            // Create a floating cube
-            const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            // Create a physics-enabled cube
+            const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3); // Smaller cube for AR
             const material = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.7 });
             const cube = new THREE.Mesh(geometry, material);
             
-            // Position it 1.5 meters in front of the user, at eye level
-            cube.position.set(0, 1.6, -1.5);
+            // Start position
+            cube.position.set(0, 0.5, -1.0);
             
-            // Add a slow rotation animation
-            cube.userData.tick = (delta) => {
-                cube.rotation.x += delta;
-                cube.rotation.y += delta;
-            };
+            // Physics properties
+            cube.userData.velocity = new THREE.Vector3(0, 0, 0);
+            cube.userData.isSimulating = true;
 
             worldGroup.add(cube);
             scene.add(worldGroup);
             
             currentWorldObject = worldGroup;
             currentWorldType = 'cube';
-            updateUIButton("AR Cube");
+            updateUIButton("AR Cube (Tap to Jump)");
         }
 
         function switchWorld() {
@@ -386,13 +442,78 @@
             renderer.setAnimationLoop(render);
         }
 
-        function render() {
-            // Animation for the cube
+        function render(timestamp, frame) {
+            // AR Hit Test Logic
+            if (frame && currentWorldType === 'cube') {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then((referenceSpace) => {
+                        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
+                            hitTestSource = source;
+                        });
+                    });
+                    session.addEventListener('end', () => {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                    });
+                    hitTestSourceRequested = true;
+                }
+
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+            } else {
+                reticle.visible = false;
+            }
+
+            // Physics & Animation for the cube
             if (currentWorldObject && currentWorldType === 'cube') {
                 const cube = currentWorldObject.children[0];
-                if (cube) {
+                if (cube && cube.userData.isSimulating) {
+                    const delta = 0.016; // Approx 60fps
+                    
+                    // Apply Gravity
+                    cube.userData.velocity.y -= 9.8 * delta;
+                    
+                    // Apply Velocity
+                    cube.position.addScaledVector(cube.userData.velocity, delta);
+                    
+                    // Simple Rotation
                     cube.rotation.x += 0.01;
                     cube.rotation.y += 0.01;
+
+                    // Floor Collision (Simple: If reticle is visible, use its Y, else default to -1)
+                    let floorY = -1.5; // Default floor if no AR hit
+                    if (reticle.visible) {
+                        const position = new THREE.Vector3();
+                        position.setFromMatrixPosition(reticle.matrix);
+                        floorY = position.y;
+                    }
+
+                    // Check collision with floor
+                    // Cube height is 0.3, so center is 0.15 above bottom
+                    if (cube.position.y - 0.15 < floorY) {
+                        cube.position.y = floorY + 0.15;
+                        
+                        // Bounce
+                        cube.userData.velocity.y *= -0.5; // Lose energy
+                        cube.userData.velocity.x *= 0.9;  // Friction
+                        cube.userData.velocity.z *= 0.9;
+                        
+                        // Stop if slow enough
+                        if (Math.abs(cube.userData.velocity.y) < 0.1) {
+                            cube.userData.velocity.y = 0;
+                        }
+                    }
                 }
             }
             renderer.render(scene, camera);
