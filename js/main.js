@@ -28,7 +28,7 @@ function init() {
     // 4. Add ARButton
     document.body.appendChild(ARButton.createButton(renderer, { 
         requiredFeatures: ['hit-test', 'local-floor'],
-        optionalFeatures: ['dom-overlay'], 
+        optionalFeatures: ['dom-overlay', 'plane-detection'], 
         domOverlay: { root: document.body } 
     }));
 

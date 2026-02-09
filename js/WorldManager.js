@@ -2,6 +2,7 @@ import { PanoramaWorld } from './worlds/PanoramaWorld.js';
 import { VideoWorld } from './worlds/VideoWorld.js';
 import { CubeMapWorld } from './worlds/CubeMapWorld.js';
 import { ARCubeWorld } from './worlds/ARCubeWorld.js';
+import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 
 export class WorldManager {
     constructor(scene, renderer) {
@@ -15,13 +16,15 @@ export class WorldManager {
             PanoramaWorld,
             VideoWorld,
             CubeMapWorld,
-            ARCubeWorld
+            ARCubeWorld,
+            ARPhysicsWorld
         ];
         this.worldNames = [
             "Panorama",
             "Video",
             "CubeMap",
-            "AR Cube"
+            "AR Cube (Hit Test)",
+            "AR Physics (Walls)"
         ];
     }
 
