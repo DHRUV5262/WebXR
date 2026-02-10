@@ -16,15 +16,15 @@ export class WorldManager {
             PanoramaWorld,
             VideoWorld,
             CubeMapWorld,
-            ARCubeWorld,
-            ARPhysicsWorld
+            ARCubeWorld
+            // ARPhysicsWorld - Disabled for now
         ];
         this.worldNames = [
             "Panorama",
             "Video",
             "CubeMap",
-            "AR Cube (Hit Test)",
-            "AR Physics (Walls)"
+            "AR Cube (Hit Test)"
+            // "AR Physics (Walls)"
         ];
     }
 
