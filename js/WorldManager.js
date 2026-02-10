@@ -1,6 +1,6 @@
 import { PanoramaWorld } from './worlds/PanoramaWorld.js';
 import { VideoWorld } from './worlds/VideoWorld.js';
-import { CubeMapWorld } from './worlds/CubeMapWorld.js';
+import { DepthPanoramaWorld } from './worlds/DepthPanoramaWorld.js';
 import { ARCubeWorld } from './worlds/ARCubeWorld.js';
 import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 
@@ -15,14 +15,14 @@ export class WorldManager {
         this.worldClasses = [
             PanoramaWorld,
             VideoWorld,
-            CubeMapWorld,
+            DepthPanoramaWorld,
             ARCubeWorld
             // ARPhysicsWorld - Disabled for now
         ];
         this.worldNames = [
             "Panorama",
             "Video",
-            "CubeMap",
+            "Depth Panorama (Stereo)",
             "AR Cube (Hit Test)"
             // "AR Physics (Walls)"
         ];
