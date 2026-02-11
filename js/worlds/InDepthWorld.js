@@ -16,7 +16,6 @@ export class InDepthWorld {
         geometry.scale(-1, 1, 1);
 
         const material = new THREE.MeshStandardMaterial({
-            side: THREE.BackSide,
             displacementScale: -4.0, // Depth scale
             roughness: 1,
             metalness: 0
