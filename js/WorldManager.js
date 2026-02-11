@@ -14,19 +14,19 @@ export class WorldManager {
         
         // Define the cycle of worlds
         this.worldClasses = [
+            InDepthWorld,
             PanoramaWorld,
             VideoWorld,
-            // InDepthWorld,
-            // CubeMapWorld,
-            // ARCubeWorld
+            CubeMapWorld,
+            ARCubeWorld
             // ARPhysicsWorld - Disabled for now
         ];
         this.worldNames = [
+            "InDepth Panorama",
             "Panorama",
             "Video",
-            // "InDepth Panorama",
-            // "CubeMap",
-            // "AR Cube (Hit Test)"
+            "CubeMap",
+            "AR Cube (Hit Test)"
             // "AR Physics (Walls)"
         ];
     }
