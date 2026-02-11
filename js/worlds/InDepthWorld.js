@@ -16,7 +16,8 @@ export class InDepthWorld {
         geometry.scale(-1, 1, 1);
 
         const material = new THREE.MeshStandardMaterial({
-            displacementScale: -4.0, // Depth scale
+            side: THREE.DoubleSide, // Render both sides to be safe
+            displacementScale: -4.0, 
             roughness: 1,
             metalness: 0
         });
@@ -31,25 +32,29 @@ export class InDepthWorld {
         textureLoader.load(
             './assets/kandao3.jpg',
             (texture) => {
+                console.log("InDepthWorld: Color texture loaded");
                 texture.colorSpace = THREE.SRGBColorSpace;
                 texture.minFilter = THREE.NearestFilter;
                 texture.generateMipmaps = false;
                 material.map = texture;
                 material.needsUpdate = true;
-            }
+            },
+            undefined,
+            (err) => console.error("InDepthWorld: Error loading color texture", err)
         );
 
         // Load Depth Map
         textureLoader.load(
             './assets/kandao3_depthmap.jpg',
             (depthTexture) => {
+                console.log("InDepthWorld: Depth texture loaded");
                 depthTexture.minFilter = THREE.NearestFilter;
                 depthTexture.generateMipmaps = false;
                 material.displacementMap = depthTexture;
                 material.needsUpdate = true;
             },
             undefined,
-            (err) => console.warn("Depth map not found", err)
+            (err) => console.error("InDepthWorld: Error loading depth map", err)
         );
 
         scene.add(worldGroup);
