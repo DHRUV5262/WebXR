@@ -36,20 +36,36 @@ export class WorldManager {
     }
 
     switchWorld(index) {
+        console.log(`[WorldManager] switchWorld called with index ${index}`);
+        
         // Cleanup old world
         if (this.currentWorld) {
-            this.currentWorld.exit(this.scene);
+            console.log(`[WorldManager] Exiting current world: ${this.worldNames[this.currentWorldIndex]}`);
+            try {
+                this.currentWorld.exit(this.scene);
+                console.log(`[WorldManager] Exit successful`);
+            } catch (e) {
+                console.error(`[WorldManager] Error exiting world:`, e);
+            }
         }
 
         // Setup new world
         this.currentWorldIndex = index;
         const WorldClass = this.worldClasses[this.currentWorldIndex];
+        
+        console.log(`[WorldManager] Creating new world instance`);
         this.currentWorld = new WorldClass();
         
-        console.log(`Switching to world: ${this.worldNames[index]}`);
-        this.currentWorld.enter(this.scene, this.renderer);
+        console.log(`[WorldManager] Entering new world: ${this.worldNames[index]}`);
+        try {
+            this.currentWorld.enter(this.scene, this.renderer);
+            console.log(`[WorldManager] Enter successful`);
+        } catch (e) {
+            console.error(`[WorldManager] Error entering world:`, e);
+        }
         
         this.updateUI();
+        console.log(`[WorldManager] switchWorld complete`);
     }
 
     cycleWorld() {
