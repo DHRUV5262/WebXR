@@ -16,10 +16,12 @@ export class InDepthWorld {
         geometry.scale(-1, 1, 1);
 
         const material = new THREE.MeshStandardMaterial({
-            side: THREE.DoubleSide, // Render both sides to be safe
+            side: THREE.DoubleSide,
             displacementScale: -4.0, 
             roughness: 1,
-            metalness: 0
+            metalness: 0,
+            emissive: 0xffffff,
+            emissiveIntensity: 1
         });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -37,6 +39,7 @@ export class InDepthWorld {
                 texture.minFilter = THREE.NearestFilter;
                 texture.generateMipmaps = false;
                 material.map = texture;
+                material.emissiveMap = texture;
                 material.needsUpdate = true;
             },
             undefined,
