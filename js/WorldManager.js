@@ -3,6 +3,7 @@ import { VideoWorld } from './worlds/VideoWorld.js';
 import { CubeMapWorld } from './worlds/CubeMapWorld.js';
 import { ARCubeWorld } from './worlds/ARCubeWorld.js';
 import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
+import { InDepthWorld } from './worlds/InDepthWorld.js';
 
 export class WorldManager {
     constructor(scene, renderer) {
@@ -13,6 +14,7 @@ export class WorldManager {
         
         // Define the cycle of worlds
         this.worldClasses = [
+            InDepthWorld,
             PanoramaWorld,
             VideoWorld,
             CubeMapWorld,
@@ -20,6 +22,7 @@ export class WorldManager {
             // ARPhysicsWorld - Disabled for now
         ];
         this.worldNames = [
+            "InDepth Panorama",
             "Panorama",
             "Video",
             "CubeMap",
