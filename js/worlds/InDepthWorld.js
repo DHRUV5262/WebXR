@@ -16,12 +16,10 @@ export class InDepthWorld {
         geometry.scale(-1, 1, 1);
 
         const material = new THREE.MeshStandardMaterial({
-            side: THREE.DoubleSide,
+            side: THREE.DoubleSide, // Render both sides to be safe
             displacementScale: -4.0, 
             roughness: 1,
-            metalness: 0,
-            emissive: 0xffffff,
-            emissiveIntensity: 1
+            metalness: 0
         });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -39,7 +37,6 @@ export class InDepthWorld {
                 texture.minFilter = THREE.NearestFilter;
                 texture.generateMipmaps = false;
                 material.map = texture;
-                material.emissiveMap = texture;
                 material.needsUpdate = true;
             },
             undefined,
@@ -83,11 +80,10 @@ export class InDepthWorld {
     }
 
     update(time, frame, renderer, scene, camera) {
-        // Optional: Add subtle rotation if not in VR to show off depth
+        // Continuous 360 rotation if not in VR
         if (!renderer.xr.isPresenting && this.object) {
-             const t = this.clock.getElapsedTime();
-             // Gentle sway to visualize parallax
-             this.object.rotation.y = Math.sin(t * 0.1) * 0.1;
+             // Rotate slowly around Y axis
+             this.object.rotation.y += 0.001; 
         }
     }
 }
