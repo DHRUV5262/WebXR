@@ -60,6 +60,11 @@ export class InDepthWorld {
         scene.add(worldGroup);
         this.object = worldGroup;
         
+        // FIX: Raise the world to eye-level (approx 1.6m)
+        // This ensures the user's head is in the center of the sphere, 
+        // matching the position of the camera that took the photo.
+        this.object.position.y = 1.6;
+
         // Ensure background is reset
         scene.background = new THREE.Color(0x101010);
     }
