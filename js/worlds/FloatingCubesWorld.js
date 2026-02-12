@@ -4,6 +4,7 @@ export class FloatingCubesWorld {
     constructor() {
         this.object = null;
         this.cubes = [];
+        this.boundary = 3; // Defines the box size (-3 to 3)
     }
 
     enter(scene, renderer) {
@@ -45,6 +46,13 @@ export class FloatingCubesWorld {
                 z: Math.random() * 0.01
             };
 
+            // Store velocity for movement
+            object.userData.velocity = {
+                x: (Math.random() - 0.5) * 0.02,
+                y: (Math.random() - 0.5) * 0.02,
+                z: (Math.random() - 0.5) * 0.02
+            };
+
             this.object.add(object);
             this.cubes.push(object);
         }
@@ -61,7 +69,7 @@ export class FloatingCubesWorld {
             
             // Cleanup memory
             this.cubes.forEach(cube => {
-                cube.geometry.dispose(); // Note: we reused geometry, so technically only need to dispose once, but this is safe
+                cube.geometry.dispose(); 
                 cube.material.dispose();
             });
             
@@ -73,9 +81,26 @@ export class FloatingCubesWorld {
     update(time, frame) {
         // Animate each cube individually
         this.cubes.forEach(cube => {
+            // Rotation
             cube.rotation.x += cube.userData.rotationSpeed.x;
             cube.rotation.y += cube.userData.rotationSpeed.y;
             cube.rotation.z += cube.userData.rotationSpeed.z;
+
+            // Position Movement
+            cube.position.x += cube.userData.velocity.x;
+            cube.position.y += cube.userData.velocity.y;
+            cube.position.z += cube.userData.velocity.z;
+
+            // Boundary Check (Bounce off walls)
+            if (cube.position.x < -this.boundary || cube.position.x > this.boundary) {
+                cube.userData.velocity.x *= -1;
+            }
+            if (cube.position.y < -this.boundary || cube.position.y > this.boundary) {
+                cube.userData.velocity.y *= -1;
+            }
+            if (cube.position.z < -this.boundary || cube.position.z > this.boundary) {
+                cube.userData.velocity.z *= -1;
+            }
         });
     }
 }
