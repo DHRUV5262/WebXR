@@ -55,11 +55,12 @@ export class FloatingShapesWorld {
                     y: Math.random() * 0.02,
                     z: Math.random() * 0.02
                 },
-                velocity: {
-                    x: (Math.random() - 0.5) * 0.01, // Back to slower default speed
-                    y: (Math.random() - 0.5) * 0.01,
-                    z: (Math.random() - 0.5) * 0.01
-                }
+                // Use a THREE.Vector3 for velocity so we can use vector helpers
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.01,
+                    (Math.random() - 0.5) * 0.01,
+                    (Math.random() - 0.5) * 0.01
+                )
             };
 
             this.object.add(object);
@@ -103,9 +104,7 @@ export class FloatingShapesWorld {
                 .normalize();
 
             // Apply a strong impulse to velocity
-            selectedObject.userData.velocity.x += direction.x * 0.2; // Speed boost
-            selectedObject.userData.velocity.y += direction.y * 0.2;
-            selectedObject.userData.velocity.z += direction.z * 0.2;
+            selectedObject.userData.velocity.addScaledVector(direction, 0.2); // Speed boost
 
             // Change color to indicate hit
             selectedObject.material.color.setHex(0xffffff); 
@@ -128,9 +127,7 @@ export class FloatingShapesWorld {
             shape.position.add(shape.userData.velocity);
 
             // Friction (slow down the "impulse" from clicks over time)
-            shape.userData.velocity.x *= 0.98;
-            shape.userData.velocity.y *= 0.98;
-            shape.userData.velocity.z *= 0.98;
+            shape.userData.velocity.multiplyScalar(0.98);
             
             // Keep a minimum speed so they don't stop completely
             if (shape.userData.velocity.length() < 0.01) {
