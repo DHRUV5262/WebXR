@@ -48,9 +48,9 @@ export class FloatingCubesWorld {
 
             // Store velocity for movement
             object.userData.velocity = {
-                x: (Math.random() - 0.5) * 0.1,
-                y: (Math.random() - 0.5) * 0.1,
-                z: (Math.random() - 0.5) * 0.1
+                x: (Math.random() - 0.5) * 0.05,
+                y: (Math.random() - 0.5) * 0.05,
+                z: (Math.random() - 0.5) * 0.05
             };
 
             this.object.add(object);
