@@ -64,8 +64,9 @@ export class HorseWorld {
         scene.background = new THREE.Color(0x1a1a2e);
 
         this.isoCamera = createIsometricCamera();
-        this.isoCamera.position.set(0, 2.5, 4);
-        this.cameraTarget.set(0, 0.6, -2);
+        // Start under the horse (low Y), in front (positive Z), looking up at the horse
+        this.isoCamera.position.set(0, 0.4, 4);
+        this.cameraTarget.set(0, 1.2, -2);
         this.isoCamera.lookAt(this.cameraTarget);
 
         const w = renderer.domElement.clientWidth || window.innerWidth;
