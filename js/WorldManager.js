@@ -14,26 +14,24 @@ export class WorldManager {
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
-        // Define the cycle of worlds
+        // Define the cycle of worlds (Horse first so you see it as soon as you enter)
         this.worldClasses = [
+            HorseWorld,
             InDepthWorld,
             PanoramaWorld,
             VideoWorld,
             CubeMapWorld,
             FloatingShapesWorld,
-            HorseWorld,
             ARCubeWorld
-            // ARPhysicsWorld - Disabled for now
         ];
         this.worldNames = [
+            "Horse",
             "InDepth Panorama",
             "Panorama",
             "Video",
             "CubeMap",
             "Floating Shapes",
-            "Horse",
             "AR Cube (Hit Test)"
-            // "AR Physics (Walls)"
         ];
     }
 
@@ -101,7 +99,7 @@ export class WorldManager {
         const btn = document.getElementById('switchWorld');
         if (btn) {
             // AR World handles its own UI text during scanning, so we might check that
-            if (this.worldNames[this.currentWorldIndex] !== "AR Cube") {
+            if (this.worldNames[this.currentWorldIndex] !== "AR Cube (Hit Test)") {
                 btn.textContent = `Switch World (Current: ${this.worldNames[this.currentWorldIndex]})`;
             }
         }

@@ -3,12 +3,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
-// Fallback if you put Horse.glb in your project's assets folder (e.g. when CDN is blocked)
 const HORSE_GLB_LOCAL = './assets/Horse.glb';
 
-// Camera in your app is at (0, 1.6, 0) looking down -Z. "In front" = negative Z.
+// Camera in main.js is at (0, 1.6, 0) looking down -Z.
 const CAM_HEIGHT = 1.6;
-const FRONT_DISTANCE = 2.5;
+const FRONT_Z = -1.8; // 1.8m in front of camera
 
 export class HorseWorld {
     constructor() {
@@ -19,28 +18,33 @@ export class HorseWorld {
     }
 
     enter(scene, renderer) {
-        scene.background = new THREE.Color(0x1a1a2e);
+        scene.background = new THREE.Color(0x2d2d44);
 
         this.object = new THREE.Group();
         scene.add(this.object);
 
-        // ---- 1) Reference cube: same height as camera, 2m in front ----
-        const cubeGeom = new THREE.BoxGeometry(0.25, 0.25, 0.25);
-        const cubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+        // ---- 1) Big reference cube: MeshBasicMaterial so it's visible even without lights ----
+        const cubeGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const cubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         this.referenceCube = new THREE.Mesh(cubeGeom, cubeMat);
-        this.referenceCube.position.set(0, CAM_HEIGHT, -FRONT_DISTANCE + 0.5); // slightly closer so cube is in front
+        this.referenceCube.position.set(0.6, CAM_HEIGHT, FRONT_Z); // to the right of center
         this.object.add(this.referenceCube);
 
-        // ---- 2) Horse: right in front of camera ----
+        // ---- 2) Second cube (green) dead center in front ----
+        const cube2Geom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const cube2Mat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const centerCube = new THREE.Mesh(cube2Geom, cube2Mat);
+        centerCube.position.set(0, CAM_HEIGHT, FRONT_Z);
+        this.object.add(centerCube);
+        this.centerCube = centerCube;
+
+        // ---- 3) Horse: load and place left of center ----
         const loader = new GLTFLoader();
         const onLoaded = (gltf) => {
             const model = gltf.scene;
-            // Horse.glb is small; scale up so it's visible
             model.scale.setScalar(4);
-            // Position in front of camera (same height, 2.5m ahead)
-            model.position.set(0, CAM_HEIGHT, -FRONT_DISTANCE);
+            model.position.set(-0.6, CAM_HEIGHT, FRONT_Z);
             model.rotation.y = Math.PI;
-            // Ensure all meshes are visible (some GLBs have backface culling)
             model.traverse((child) => {
                 if (child.isMesh && child.material) {
                     const mat = child.material;
@@ -49,24 +53,23 @@ export class HorseWorld {
                 }
             });
             this.object.add(model);
-            console.log('HorseWorld: horse loaded and added to scene.');
-
+            console.log('HorseWorld: horse loaded.');
             if (gltf.animations && gltf.animations.length > 0) {
                 this.mixer = new THREE.AnimationMixer(model);
                 this.mixer.clipAction(gltf.animations[0]).play();
             }
         };
         const onError = (err) => {
-            console.error('HorseWorld: load failed (try local file or check network):', err);
-            loader.load(HORSE_GLB_LOCAL, onLoaded, undefined, (e) => console.error('HorseWorld: local load also failed:', e));
+            console.error('HorseWorld: CDN load failed:', err);
+            loader.load(HORSE_GLB_LOCAL, onLoaded, undefined, (e) => console.error('HorseWorld: local load failed:', e));
         };
         loader.load(HORSE_GLB_URL, onLoaded, undefined, onError);
 
-        // ---- 3) Lights ----
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(2, 5, 3);
-        this.object.add(light);
-        this.object.add(new THREE.AmbientLight(0xffffff, 0.6));
+        // ---- 4) Lights (for horse materials that need it) ----
+        this.object.add(new THREE.DirectionalLight(0xffffff, 1.2));
+        this.object.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+        console.log('HorseWorld: entered. Red cube right, green cube center, horse left when loaded.');
     }
 
     exit(scene) {
@@ -76,6 +79,11 @@ export class HorseWorld {
                 this.referenceCube.geometry?.dispose();
                 this.referenceCube.material?.dispose();
                 this.referenceCube = null;
+            }
+            if (this.centerCube) {
+                this.centerCube.geometry?.dispose();
+                this.centerCube.material?.dispose();
+                this.centerCube = null;
             }
             this.object.traverse((child) => {
                 if (child.isMesh) {
