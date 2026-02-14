@@ -4,24 +4,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 
-const PAN_SPEED = 0.12;
-const ROTATE_SPEED = 0.03;
-
-function createIsometricCamera() {
-    const size = 5;
-    const isoCamera = new THREE.OrthographicCamera(
-        -size, size,
-        size, -size,
-        0.1, 100
-    );
-    isoCamera.position.set(0, 2.5, 4);
-    isoCamera.updateProjectionMatrix();
-    return isoCamera;
-}
+const PAN_SPEED = 0.08;
+const ORBIT_SPEED = 0.03;
+const ZOOM_SPEED = 0.5;
 
 function updateIsometricCameraSize(isoCamera, width, height) {
     const aspect = width / height;
-    const size = 5;
+    const size = 3;
     if (aspect >= 1) {
         isoCamera.left = -size * aspect;
         isoCamera.right = size * aspect;
@@ -36,91 +25,106 @@ function updateIsometricCameraSize(isoCamera, width, height) {
     isoCamera.updateProjectionMatrix();
 }
 
+// Spherical position: camera orbits around target. theta = horizontal, phi = vertical (0 = from above)
+function cameraPositionFromOrbit(target, distance, theta, phi) {
+    const x = target.x + distance * Math.sin(phi) * Math.cos(theta);
+    const y = target.y + distance * Math.cos(phi);
+    const z = target.z + distance * Math.sin(phi) * Math.sin(theta);
+    return new THREE.Vector3(x, y, z);
+}
+
 export class HorseWorld {
     constructor() {
         this.object = null;
         this.mixer = null;
         this.clock = new THREE.Clock();
         this.isoCamera = null;
-        this.cameraTarget = new THREE.Vector3(0, 0.6, -2);
-        this.keys = {};
-        this._boundKeyDown = this._onKeyDown.bind(this);
-        this._boundKeyUp = this._onKeyUp.bind(this);
+        // Orbit state: target point, distance, angles (radians)
+        this.target = new THREE.Vector3(0, 0.5, -2);
+        this.distance = 5;
+        this.theta = Math.PI * 0.5;  // 90° - camera in +Z (in front of horse)
+        this.phi = Math.PI * 0.22;   // ~40° from top - clearly above the horse
+        this.keys = new Set();
+        this.boundKeyDown = this.onKeyDown.bind(this);
+        this.boundKeyUp = this.onKeyUp.bind(this);
     }
 
     getCamera() {
         return this.isoCamera;
     }
 
-    _onKeyDown(e) {
-        this.keys[e.code] = true;
+    onKeyDown(e) {
+        const k = e.code || e.key;
+        if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(k)) {
+            e.preventDefault();
+            this.keys.add(k);
+        }
     }
 
-    _onKeyUp(e) {
-        this.keys[e.code] = false;
+    onKeyUp(e) {
+        const k = e.code || e.key;
+        this.keys.delete(k);
     }
 
     enter(scene, renderer) {
         scene.background = new THREE.Color(0x1a1a2e);
 
-        this.isoCamera = createIsometricCamera();
-        // Start under the horse (low Y), in front (positive Z), looking up at the horse
-        this.isoCamera.position.set(0, 0.4, 4);
-        this.cameraTarget.set(0, 1.2, -2);
-        this.isoCamera.lookAt(this.cameraTarget);
-
+        this.isoCamera = new THREE.OrthographicCamera(-3, 3, 3, -3, 0.1, 100);
         const w = renderer.domElement.clientWidth || window.innerWidth;
         const h = renderer.domElement.clientHeight || window.innerHeight;
         updateIsometricCameraSize(this.isoCamera, w, h);
 
-        document.addEventListener('keydown', this._boundKeyDown);
-        document.addEventListener('keyup', this._boundKeyUp);
+        this.target.set(0, 0.5, -2);
+        this.distance = 5;
+        this.theta = Math.PI * 0.5;
+        this.phi = Math.PI * 0.22;
+        this.updateCameraPosition();
+
+        window.addEventListener('keydown', this.boundKeyDown);
+        window.addEventListener('keyup', this.boundKeyUp);
 
         this.object = new THREE.Group();
         scene.add(this.object);
-
-        // Ground plane so we see the space and lighting
-        const groundGeo = new THREE.PlaneGeometry(8, 8);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x2d2d44 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.set(0, 0, -2);
-        this.object.add(ground);
 
         const loader = new GLTFLoader();
         loader.load(
             HORSE_GLB_URL,
             (gltf) => {
                 const model = gltf.scene;
-                model.scale.setScalar(3);
+                model.scale.setScalar(2);
                 model.position.set(0, 0, -2);
                 model.rotation.y = Math.PI;
-                model.traverse((child) => {
-                    if (child.isMesh && child.material) {
-                        child.material = child.material.clone();
-                        child.material.color?.setHex(0xcccccc);
-                    }
-                });
                 this.object.add(model);
 
+                // Optional: play morph/animations if present
                 if (gltf.animations && gltf.animations.length > 0) {
                     this.mixer = new THREE.AnimationMixer(model);
-                    this.mixer.clipAction(gltf.animations[0]).play();
+                    const clip = gltf.animations[0];
+                    this.mixer.clipAction(clip).play();
                 }
             },
             undefined,
             (err) => console.error('Horse load error:', err)
         );
 
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(3, 6, 4);
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(2, 5, 3);
         this.object.add(light);
-        this.object.add(new THREE.AmbientLight(0xffffff, 0.6));
+        this.object.add(new THREE.AmbientLight(0xffffff, 0.4));
+    }
+
+    updateCameraPosition() {
+        if (!this.isoCamera) return;
+        const pos = cameraPositionFromOrbit(this.target, this.distance, this.theta, this.phi);
+        this.isoCamera.position.copy(pos);
+        this.isoCamera.lookAt(this.target);
     }
 
     exit(scene) {
-        document.removeEventListener('keydown', this._boundKeyDown);
-        document.removeEventListener('keyup', this._boundKeyUp);
+        window.removeEventListener('keydown', this.boundKeyDown);
+        window.removeEventListener('keyup', this.boundKeyUp);
+        this.keys.clear();
+
         if (this.object) {
             scene.remove(this.object);
             this.object.traverse((child) => {
@@ -145,41 +149,40 @@ export class HorseWorld {
     }
 
     update(time, frame, renderer, scene, camera) {
-        const dt = this.clock.getDelta();
-        const cam = this.isoCamera;
-        if (cam) {
-            const pan = PAN_SPEED * (dt * 60);
-            const rot = ROTATE_SPEED * (dt * 60);
-
-            if (this.keys['KeyW']) {
-                this.cameraTarget.z -= pan;
-                cam.position.z -= pan;
-            }
-            if (this.keys['KeyS']) {
-                this.cameraTarget.z += pan;
-                cam.position.z += pan;
-            }
-            if (this.keys['KeyA']) {
-                this.cameraTarget.x -= pan;
-                cam.position.x -= pan;
-            }
-            if (this.keys['KeyD']) {
-                this.cameraTarget.x += pan;
-                cam.position.x += pan;
-            }
-            if (this.keys['ArrowLeft'] || this.keys['ArrowRight']) {
-                const dx = cam.position.x - this.cameraTarget.x;
-                const dz = cam.position.z - this.cameraTarget.z;
-                const rxz = Math.sqrt(dx * dx + dz * dz);
-                let theta = Math.atan2(dx, dz);
-                theta += this.keys['ArrowLeft'] ? rot : -rot;
-                cam.position.x = this.cameraTarget.x + rxz * Math.sin(theta);
-                cam.position.z = this.cameraTarget.z + rxz * Math.cos(theta);
-            }
-            cam.lookAt(this.cameraTarget);
-        }
         if (this.mixer) {
-            this.mixer.update(dt);
+            this.mixer.update(this.clock.getDelta());
         }
+
+        if (!this.isoCamera) return;
+
+        // Left/Right arrow: orbit rotation
+        if (this.keys.has('ArrowLeft')) {
+            this.theta -= ORBIT_SPEED;
+        }
+        if (this.keys.has('ArrowRight')) {
+            this.theta += ORBIT_SPEED;
+        }
+
+        // WASD: pan target in the horizontal plane (forward/right relative to view)
+        const forward = new THREE.Vector3(
+            -Math.sin(this.phi) * Math.cos(this.theta),
+            0,
+            -Math.sin(this.phi) * Math.sin(this.theta)
+        ).normalize();
+        const right = new THREE.Vector3(Math.cos(this.theta), 0, -Math.sin(this.theta));
+        if (this.keys.has('KeyW')) {
+            this.target.addScaledVector(forward, PAN_SPEED);
+        }
+        if (this.keys.has('KeyS')) {
+            this.target.addScaledVector(forward, -PAN_SPEED);
+        }
+        if (this.keys.has('KeyA')) {
+            this.target.addScaledVector(right, -PAN_SPEED);
+        }
+        if (this.keys.has('KeyD')) {
+            this.target.addScaledVector(right, PAN_SPEED);
+        }
+
+        this.updateCameraPosition();
     }
 }
