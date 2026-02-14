@@ -1,32 +1,31 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// Horse model – try CDN first (better CORS for localhost/file), then threejs.org
-const HORSE_GLB_URLS = [
-    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/models/gltf/Horse.glb',
-    'https://threejs.org/examples/models/gltf/Horse.glb'
-];
+// Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
+const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 
-// Horse is at (0, 0, -2). Isometric camera must be in FRONT (positive Z) and ABOVE (positive Y).
-const HORSE_TARGET = new THREE.Vector3(0, 0.6, -2);
+// Horse is at (0, 0, -2), scale 2. Center of mass ~ (0, 1, -2). Camera in front = positive Z.
+const HORSE_CENTER = new THREE.Vector3(0, 1, -2);
 
 function createIsometricCamera() {
-    const size = 5; // larger so whole horse fits
+    // Orthographic: smaller size = zoomed in. Horse is ~2 units tall, use 2.5 so it fits with margin.
+    const size = 2.5;
     const isoCamera = new THREE.OrthographicCamera(
         -size, size,
         size, -size,
         0.1, 100
     );
-    // In front of and above the horse (positive Z = in front, positive Y = above)
-    isoCamera.position.set(0, 2.5, 4);
-    isoCamera.lookAt(HORSE_TARGET);
+    // Close and slightly above: in front (positive Z), so we look at the horse
+    isoCamera.position.set(0, 1.8, 1);
+    isoCamera.lookAt(HORSE_CENTER);
     isoCamera.updateProjectionMatrix();
+    isoCamera.updateMatrixWorld(true);
     return isoCamera;
 }
 
 function updateIsometricCameraSize(isoCamera, width, height) {
     const aspect = width / height;
-    const size = 5;
+    const size = 2.5;
     if (aspect >= 1) {
         isoCamera.left = -size * aspect;
         isoCamera.right = size * aspect;
@@ -44,7 +43,6 @@ function updateIsometricCameraSize(isoCamera, width, height) {
 export class HorseWorld {
     constructor() {
         this.object = null;
-        this.placeholderMesh = null; // visible until horse loads
         this.mixer = null;
         this.clock = new THREE.Clock();
         this.isoCamera = null;
@@ -65,58 +63,31 @@ export class HorseWorld {
         this.object = new THREE.Group();
         scene.add(this.object);
 
-        // Placeholder so something is visible immediately (and we know the view works)
-        const placeholderGeo = new THREE.BoxGeometry(0.8, 0.6, 0.4);
-        const placeholderMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-        this.placeholderMesh = new THREE.Mesh(placeholderGeo, placeholderMat);
-        this.placeholderMesh.position.set(0, 0.5, -2);
-        this.object.add(this.placeholderMesh);
+        const loader = new GLTFLoader();
+        loader.load(
+            HORSE_GLB_URL,
+            (gltf) => {
+                const model = gltf.scene;
+                model.scale.setScalar(2);
+                model.position.set(0, 0, -2);
+                model.rotation.y = Math.PI;
+                this.object.add(model);
 
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+                // Optional: play morph/animations if present
+                if (gltf.animations && gltf.animations.length > 0) {
+                    this.mixer = new THREE.AnimationMixer(model);
+                    const clip = gltf.animations[0];
+                    this.mixer.clipAction(clip).play();
+                }
+            },
+            undefined,
+            (err) => console.error('Horse load error:', err)
+        );
+
+        const light = new THREE.DirectionalLight(0xffffff, 1);
         light.position.set(2, 5, 3);
         this.object.add(light);
-        this.object.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-        const loader = new GLTFLoader();
-        const self = this;
-        let loaded = false;
-
-        function tryLoad(index) {
-            if (index >= HORSE_GLB_URLS.length) {
-                console.warn('Horse: all URLs failed, keeping placeholder');
-                return;
-            }
-            const url = HORSE_GLB_URLS[index];
-            loader.load(
-                url,
-                (gltf) => {
-                    if (loaded) return;
-                    loaded = true;
-                    if (self.placeholderMesh && self.object) {
-                        self.object.remove(self.placeholderMesh);
-                        self.placeholderMesh.geometry.dispose();
-                        self.placeholderMesh.material.dispose();
-                        self.placeholderMesh = null;
-                    }
-                    const model = gltf.scene;
-                    model.scale.setScalar(2);
-                    model.position.set(0, 0, -2);
-                    model.rotation.y = Math.PI;
-                    self.object.add(model);
-                    if (gltf.animations && gltf.animations.length > 0) {
-                        self.mixer = new THREE.AnimationMixer(model);
-                        self.mixer.clipAction(gltf.animations[0]).play();
-                    }
-                    console.log('Horse: model loaded');
-                },
-                undefined,
-                (err) => {
-                    console.warn('Horse: load failed for', url, err);
-                    tryLoad(index + 1);
-                }
-            );
-        }
-        tryLoad(0);
+        this.object.add(new THREE.AmbientLight(0xffffff, 0.4));
     }
 
     exit(scene) {
@@ -133,7 +104,6 @@ export class HorseWorld {
             });
             this.object = null;
         }
-        this.placeholderMesh = null;
         this.mixer = null;
         this.isoCamera = null;
     }
