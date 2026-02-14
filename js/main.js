@@ -5,6 +5,8 @@ import { WorldManager } from './WorldManager.js';
 let camera, scene, renderer;
 let worldManager;
 let controller;
+let pointerRaycaster;
+let pointerMouse;
 
 init();
 
@@ -24,6 +26,11 @@ function init() {
     renderer.xr.enabled = true;
     
     document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Mouse click for desktop (e.g. Floating Shapes)
+    pointerRaycaster = new THREE.Raycaster();
+    pointerMouse = new THREE.Vector2();
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
     // 4. Add ARButton
     document.body.appendChild(ARButton.createButton(renderer, { 
@@ -69,6 +76,15 @@ function init() {
 
 function onSelect() {
     worldManager.handleSelect(controller);
+}
+
+function onPointerDown(event) {
+    const canvas = renderer.domElement;
+    const rect = canvas.getBoundingClientRect();
+    pointerMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointerMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    pointerRaycaster.setFromCamera(pointerMouse, camera);
+    worldManager.handlePointerClick(pointerRaycaster);
 }
 
 function onWindowResize() {

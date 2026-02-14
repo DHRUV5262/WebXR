@@ -9,9 +9,12 @@ export class FloatingShapesWorld {
         // Raycaster for click detection
         this.raycaster = new THREE.Raycaster();
         this.workingMatrix = new THREE.Matrix4();
+        this.debugRayLine = null;
+        this.debugRayTimeout = null;
     }
 
     enter(scene, renderer) {
+        this.scene = scene;
         this.object = new THREE.Group();
 
         // 1. Define multiple geometries
@@ -72,6 +75,14 @@ export class FloatingShapesWorld {
     }
 
     exit(scene) {
+        if (this.debugRayTimeout) clearTimeout(this.debugRayTimeout);
+        if (this.debugRayLine && this.scene) {
+            this.scene.remove(this.debugRayLine);
+            this.debugRayLine.geometry.dispose();
+            this.debugRayLine.material.dispose();
+            this.debugRayLine = null;
+        }
+        this.scene = null;
         if (this.object) {
             scene.remove(this.object);
             this.shapes.forEach(shape => {
@@ -84,36 +95,67 @@ export class FloatingShapesWorld {
         }
     }
 
-    // Handle user clicks (controller trigger press)
+    // Draw a short-lived debug line along the raycaster (desktop click or VR/AR trigger)
+    showDebugRay(raycaster, length = 8) {
+        if (!this.scene) return;
+        if (this.debugRayTimeout) clearTimeout(this.debugRayTimeout);
+        if (this.debugRayLine) {
+            this.scene.remove(this.debugRayLine);
+            this.debugRayLine.geometry.dispose();
+            this.debugRayLine.material.dispose();
+        }
+        const start = raycaster.ray.origin.clone();
+        const end = start.clone().add(raycaster.ray.direction.clone().multiplyScalar(length));
+        const points = [start, end];
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+        this.debugRayLine = new THREE.Line(geometry, material);
+        this.scene.add(this.debugRayLine);
+        this.debugRayTimeout = setTimeout(() => {
+            if (this.scene && this.debugRayLine) {
+                this.scene.remove(this.debugRayLine);
+                this.debugRayLine.geometry.dispose();
+                this.debugRayLine.material.dispose();
+                this.debugRayLine = null;
+            }
+            this.debugRayTimeout = null;
+        }, 400);
+    }
+
+    // Shared: push the first shape hit by the given raycaster (used by both mouse and VR controller)
+    pushShapeAtRay(raycaster) {
+        this.showDebugRay(raycaster);
+        if (!this.object) return;
+        const intersects = raycaster.intersectObjects(this.object.children);
+        if (intersects.length === 0) return;
+
+        const hit = intersects[0];
+        // Optional: shorten debug ray to hit point so it's clear what was hit
+        this.showDebugRay(raycaster, hit.distance);
+        const selectedObject = hit.object;
+        // Direction away from the click/controller (world space)
+        const direction = new THREE.Vector3()
+            .subVectors(hit.point, raycaster.ray.origin)
+            .normalize();
+
+        selectedObject.userData.velocity.addScaledVector(direction, 0.2);
+        selectedObject.material.color.setHex(0xffffff);
+        selectedObject.material.emissive.setHex(0xff0000);
+        selectedObject.userData.rotationSpeed.x += 0.1;
+        selectedObject.userData.rotationSpeed.y += 0.1;
+    }
+
+    // VR/AR: controller trigger
     onSelect(controller) {
-        // 1. Setup raycaster from controller position
         this.workingMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.workingMatrix);
+        this.pushShapeAtRay(this.raycaster);
+    }
 
-        // 2. Check for intersections
-        const intersects = this.raycaster.intersectObjects(this.object.children);
-
-        if (intersects.length > 0) {
-            const selectedObject = intersects[0].object;
-
-            // 3. Make it move away!
-            // Calculate direction from controller to object
-            const direction = new THREE.Vector3()
-                .subVectors(selectedObject.position, this.raycaster.ray.origin)
-                .normalize();
-
-            // Apply a strong impulse to velocity
-            selectedObject.userData.velocity.addScaledVector(direction, 0.2); // Speed boost
-
-            // Change color to indicate hit
-            selectedObject.material.color.setHex(0xffffff); 
-            selectedObject.material.emissive.setHex(0xff0000); // Glow red momentarily
-            
-            // Optional: Spin faster
-            selectedObject.userData.rotationSpeed.x += 0.1;
-            selectedObject.userData.rotationSpeed.y += 0.1;
-        }
+    // Desktop: mouse click — pass a raycaster already set from camera + mouse
+    onPointerClick(raycaster) {
+        this.pushShapeAtRay(raycaster);
     }
 
     update(time, frame) {

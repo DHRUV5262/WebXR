@@ -88,6 +88,12 @@ export class WorldManager {
         }
     }
 
+    handlePointerClick(raycaster) {
+        if (this.currentWorld && this.currentWorld.onPointerClick) {
+            this.currentWorld.onPointerClick(raycaster);
+        }
+    }
+
     updateUI() {
         const btn = document.getElementById('switchWorld');
         if (btn) {
