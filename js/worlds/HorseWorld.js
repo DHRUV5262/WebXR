@@ -9,16 +9,38 @@ const HORSE_GLB_LOCAL = './assets/Horse.glb';
 const CAM_HEIGHT = 1.6;
 const FRONT_Z = -1.8; // 1.8m in front of camera
 
+const MOVE_SPEED = 2.5;   // units per second
+const ROTATE_SPEED = 2.0; // radians per second
+
 export class HorseWorld {
     constructor() {
         this.object = null;
         this.referenceCube = null;
+        this.centerCube = null;
         this.mixer = null;
         this.clock = new THREE.Clock();
+        this.keys = {};
+        this.boundKeyDown = null;
+        this.boundKeyUp = null;
     }
 
-    enter(scene, renderer) {
+    enter(scene, renderer, camera) {
         scene.background = new THREE.Color(0x2d2d44);
+
+        this.camera = camera;
+        // Start in front of the scene so you're not under the horse
+        this.camera.position.set(0, CAM_HEIGHT, 2);
+        this.camera.rotation.set(0, 0, 0);
+
+        // Keyboard: WASD + Arrow Left/Right (only active in Horse world)
+        this.keys = {};
+        this.boundKeyDown = (e) => { this.keys[e.code] = true; };
+        this.boundKeyUp = (e) => { this.keys[e.code] = false; };
+        window.addEventListener('keydown', this.boundKeyDown);
+        window.addEventListener('keyup', this.boundKeyUp);
+
+        this.object = new THREE.Group();
+        scene.add(this.object);
 
         this.object = new THREE.Group();
         scene.add(this.object);
@@ -69,10 +91,20 @@ export class HorseWorld {
         this.object.add(new THREE.DirectionalLight(0xffffff, 1.2));
         this.object.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-        console.log('HorseWorld: entered. Red cube right, green cube center, horse left when loaded.');
+        console.log('HorseWorld: entered. WASD = move, Arrow L/R = rotate.');
     }
 
     exit(scene) {
+        window.removeEventListener('keydown', this.boundKeyDown);
+        window.removeEventListener('keyup', this.boundKeyUp);
+        this.boundKeyDown = null;
+        this.boundKeyUp = null;
+        this.keys = {};
+        if (this.camera) {
+            this.camera.position.set(0, 1.6, 0);
+            this.camera.rotation.set(0, 0, 0);
+            this.camera = null;
+        }
         if (this.object) {
             scene.remove(this.object);
             if (this.referenceCube) {
@@ -100,8 +132,21 @@ export class HorseWorld {
     }
 
     update(time, frame, renderer, scene, camera) {
-        if (this.mixer) {
-            this.mixer.update(this.clock.getDelta());
-        }
+        const delta = this.clock.getDelta();
+
+        if (this.mixer) this.mixer.update(delta);
+
+        if (!this.camera || !this.keys) return;
+
+        const yaw = this.camera.rotation.y;
+        const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+        const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+
+        if (this.keys['KeyW']) this.camera.position.addScaledVector(forward, MOVE_SPEED * delta);
+        if (this.keys['KeyS']) this.camera.position.addScaledVector(forward, -MOVE_SPEED * delta);
+        if (this.keys['KeyD']) this.camera.position.addScaledVector(right, MOVE_SPEED * delta);
+        if (this.keys['KeyA']) this.camera.position.addScaledVector(right, -MOVE_SPEED * delta);
+        if (this.keys['ArrowRight']) this.camera.rotation.y -= ROTATE_SPEED * delta;
+        if (this.keys['ArrowLeft']) this.camera.rotation.y += ROTATE_SPEED * delta;
     }
 }

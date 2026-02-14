@@ -50,7 +50,7 @@ function init() {
     scene.add(light);
 
     // 7. World Manager
-    worldManager = new WorldManager(scene, renderer);
+    worldManager = new WorldManager(scene, renderer, camera);
 
     // 8. Event Listeners
     window.addEventListener('resize', onWindowResize);

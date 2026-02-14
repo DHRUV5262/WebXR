@@ -8,9 +8,10 @@ import { InDepthWorld } from './worlds/InDepthWorld.js';
 import { HorseWorld } from './worlds/HorseWorld.js';
 
 export class WorldManager {
-    constructor(scene, renderer) {
+    constructor(scene, renderer, camera) {
         this.scene = scene;
         this.renderer = renderer;
+        this.camera = camera;
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
@@ -62,7 +63,7 @@ export class WorldManager {
         
         console.log(`[WorldManager] Entering new world: ${this.worldNames[index]}`);
         try {
-            this.currentWorld.enter(this.scene, this.renderer);
+            this.currentWorld.enter(this.scene, this.renderer, this.camera);
             console.log(`[WorldManager] Enter successful`);
         } catch (e) {
             console.error(`[WorldManager] Error entering world:`, e);
