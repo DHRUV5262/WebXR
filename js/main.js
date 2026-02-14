@@ -49,8 +49,8 @@ function init() {
     light.position.set(0, 20, 0);
     scene.add(light);
 
-    // 7. World Manager (pass app camera so worlds like Horse can override with isometric)
-    worldManager = new WorldManager(scene, renderer, camera);
+    // 7. World Manager
+    worldManager = new WorldManager(scene, renderer);
 
     // 8. Event Listeners
     window.addEventListener('resize', onWindowResize);
@@ -88,19 +88,12 @@ function onPointerDown(event) {
 }
 
 function onWindowResize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const activeCam = worldManager.getActiveCamera();
-    if (activeCam.isPerspectiveCamera) {
-        activeCam.aspect = w / h;
-        activeCam.updateProjectionMatrix();
-    }
-    worldManager.onResize(w, h);
-    renderer.setSize(w, h);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function render(timestamp, frame) {
-    const activeCamera = worldManager.getActiveCamera();
-    worldManager.update(timestamp, frame, activeCamera);
-    renderer.render(scene, activeCamera);
+    worldManager.update(timestamp, frame, camera);
+    renderer.render(scene, camera);
 }

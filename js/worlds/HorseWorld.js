@@ -4,57 +4,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 
-// Isometric view: orthographic, no perspective foreshortening
-function createIsometricCamera() {
-    const size = 3;
-    const isoCamera = new THREE.OrthographicCamera(
-        -size, size,   // left, right
-        size, -size,   // top, bottom
-        0.1, 100
-    );
-    // Classic isometric angle: high and to the side, looking at the scene
-    isoCamera.position.set(2.5, 2.5, 2.5);
-    isoCamera.lookAt(0, 0, -2);
-    isoCamera.updateProjectionMatrix();
-    return isoCamera;
-}
-
-function updateIsometricCameraSize(isoCamera, width, height) {
-    const aspect = width / height;
-    const size = 3;
-    if (aspect >= 1) {
-        isoCamera.left = -size * aspect;
-        isoCamera.right = size * aspect;
-        isoCamera.top = size;
-        isoCamera.bottom = -size;
-    } else {
-        isoCamera.left = -size;
-        isoCamera.right = size;
-        isoCamera.top = size / aspect;
-        isoCamera.bottom = -size / aspect;
-    }
-    isoCamera.updateProjectionMatrix();
-}
-
 export class HorseWorld {
     constructor() {
         this.object = null;
         this.mixer = null;
         this.clock = new THREE.Clock();
-        this.isoCamera = null;
-    }
-
-    getCamera() {
-        return this.isoCamera;
     }
 
     enter(scene, renderer) {
         scene.background = new THREE.Color(0x1a1a2e);
-
-        this.isoCamera = createIsometricCamera();
-        const w = renderer.domElement.clientWidth || window.innerWidth;
-        const h = renderer.domElement.clientHeight || window.innerHeight;
-        updateIsometricCameraSize(this.isoCamera, w, h);
 
         this.object = new THREE.Group();
         scene.add(this.object);
@@ -101,13 +59,6 @@ export class HorseWorld {
             this.object = null;
         }
         this.mixer = null;
-        this.isoCamera = null;
-    }
-
-    onResize(width, height) {
-        if (this.isoCamera) {
-            updateIsometricCameraSize(this.isoCamera, width, height);
-        }
     }
 
     update(time, frame, renderer, scene, camera) {

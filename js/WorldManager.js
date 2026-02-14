@@ -8,10 +8,9 @@ import { InDepthWorld } from './worlds/InDepthWorld.js';
 import { HorseWorld } from './worlds/HorseWorld.js';
 
 export class WorldManager {
-    constructor(scene, renderer, appCamera) {
+    constructor(scene, renderer) {
         this.scene = scene;
         this.renderer = renderer;
-        this.appCamera = appCamera;
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
@@ -78,20 +77,6 @@ export class WorldManager {
     cycleWorld() {
         let nextIndex = (this.currentWorldIndex + 1) % this.worldClasses.length;
         this.switchWorld(nextIndex);
-    }
-
-    getActiveCamera() {
-        if (this.currentWorld && this.currentWorld.getCamera) {
-            const cam = this.currentWorld.getCamera();
-            if (cam) return cam;
-        }
-        return this.appCamera;
-    }
-
-    onResize(width, height) {
-        if (this.currentWorld && this.currentWorld.onResize) {
-            this.currentWorld.onResize(width, height);
-        }
     }
 
     update(time, frame, camera) {
