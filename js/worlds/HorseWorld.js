@@ -4,24 +4,26 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 
-// Isometric view: orthographic, no perspective foreshortening
+// Horse is at (0, 0, -2). Isometric camera must be in FRONT (positive Z) and ABOVE (positive Y).
+const HORSE_TARGET = new THREE.Vector3(0, 0.6, -2);
+
 function createIsometricCamera() {
-    const size = 3;
+    const size = 5; // larger so whole horse fits
     const isoCamera = new THREE.OrthographicCamera(
-        -size, size,   // left, right
-        size, -size,   // top, bottom
+        -size, size,
+        size, -size,
         0.1, 100
     );
-    // Classic isometric angle: high and to the side, looking at the scene
-    isoCamera.position.set(2.5, 2.5, 2.5);
-    isoCamera.lookAt(0, 0, -2);
+    // In front of and above the horse (positive Z = in front, positive Y = above)
+    isoCamera.position.set(0, 2.5, 4);
+    isoCamera.lookAt(HORSE_TARGET);
     isoCamera.updateProjectionMatrix();
     return isoCamera;
 }
 
 function updateIsometricCameraSize(isoCamera, width, height) {
     const aspect = width / height;
-    const size = 3;
+    const size = 5;
     if (aspect >= 1) {
         isoCamera.left = -size * aspect;
         isoCamera.right = size * aspect;

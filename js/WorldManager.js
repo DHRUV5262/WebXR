@@ -46,6 +46,7 @@ export class WorldManager {
         console.log(`[WorldManager] switchWorld called with index ${index}`);
         
         // Cleanup old world
+        this._activeCameraOverride = null;
         if (this.currentWorld) {
             console.log(`[WorldManager] Exiting current world: ${this.worldNames[this.currentWorldIndex]}`);
             try {
@@ -66,9 +67,12 @@ export class WorldManager {
         console.log(`[WorldManager] Entering new world: ${this.worldNames[index]}`);
         try {
             this.currentWorld.enter(this.scene, this.renderer);
+            // Capture world-specific camera (e.g. Horse isometric) so render uses it
+            this._activeCameraOverride = this.currentWorld.getCamera ? this.currentWorld.getCamera() : null;
             console.log(`[WorldManager] Enter successful`);
         } catch (e) {
             console.error(`[WorldManager] Error entering world:`, e);
+            this._activeCameraOverride = null;
         }
         
         this.updateUI();
@@ -81,10 +85,7 @@ export class WorldManager {
     }
 
     getActiveCamera() {
-        if (this.currentWorld && this.currentWorld.getCamera) {
-            const cam = this.currentWorld.getCamera();
-            if (cam) return cam;
-        }
+        if (this._activeCameraOverride) return this._activeCameraOverride;
         return this.appCamera;
     }
 

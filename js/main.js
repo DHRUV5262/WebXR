@@ -83,7 +83,8 @@ function onPointerDown(event) {
     const rect = canvas.getBoundingClientRect();
     pointerMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointerMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    pointerRaycaster.setFromCamera(pointerMouse, camera);
+    const activeCam = worldManager.getActiveCamera();
+    pointerRaycaster.setFromCamera(pointerMouse, activeCam);
     worldManager.handlePointerClick(pointerRaycaster);
 }
 
