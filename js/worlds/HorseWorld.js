@@ -11,22 +11,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
  *
  * SCENE HIERARCHY:
  *   scene
- *     ├── camera
- *     └── this.object (Group we move with WASD)
- *           ├── referenceCube (red), centerCube (green)
- *           ├── horseMesh (glb.scene.children[0] only) at local (-0.6, 0, 0)
- *           └── lights
+ *     ├── camera          (we MOVE the camera with WASD + Arrow L/R)
+ *     └── this.object     (Group fixed at 0, CAM_HEIGHT, FRONT_Z — horse + cubes)
  *
- * Morph animation: mixer runs on glb.scene (kept in memory, not in scene) so the clip still
- * updates the same mesh by reference. Camera vs object: we move this.object, camera stays fixed.
+ * Camera movement: WASD moves camera, Arrow L/R rotates camera. Content stays fixed.
  * Axes: X = right, Y = up, Z = toward you. Camera looks along -Z.
  */
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 const HORSE_GLB_LOCAL = './assets/Horse.glb';
 
 const CAM_HEIGHT = 1.6;
-const FRONT_Z = -1.8;   // content group placed this far in front of camera
-const MOVE_SPEED = 2.5; // units per second (moving the content group)
+const FRONT_Z = -1.8;   // content group fixed in front of where camera starts
+const HORSE_SCALE = 1.2; // smaller so the world feels bigger and you can see it properly
+const MOVE_SPEED = 3;   // units per second (camera movement)
 const ROTATE_SPEED = 2.0;
 
 export class HorseWorld {
@@ -54,7 +51,7 @@ export class HorseWorld {
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
 
-        // Single group for horse + cubes. We move THIS group with WASD/arrows (camera stays put).
+        // Content group stays FIXED; we move the camera with WASD/arrows.
         this.object = new THREE.Group();
         this.object.position.set(0, CAM_HEIGHT, FRONT_Z);
         scene.add(this.object);
@@ -84,7 +81,7 @@ export class HorseWorld {
             if (!horseMesh) {
                 console.warn('HorseWorld: no children in GLB scene, adding root.');
                 contentGroup.parent && contentGroup.add(root);
-                root.scale.setScalar(4);
+                root.scale.setScalar(HORSE_SCALE);
                 root.position.set(-0.6, 0, 0);
                 root.rotation.y = Math.PI;
                 if (gltf.animations && gltf.animations.length > 0) {
@@ -95,7 +92,7 @@ export class HorseWorld {
             }
 
             root.remove(horseMesh);
-            horseMesh.scale.setScalar(4);
+            horseMesh.scale.setScalar(HORSE_SCALE);
             horseMesh.position.set(-0.6, 0, 0);
             horseMesh.rotation.y = Math.PI;
             if (horseMesh.material) {
@@ -124,7 +121,7 @@ export class HorseWorld {
         this.object.add(new THREE.DirectionalLight(0xffffff, 1.2));
         this.object.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-        console.log('HorseWorld: WASD = move content, Arrow L/R = rotate content. Camera fixed.');
+        console.log('HorseWorld: WASD = move camera, Arrow L/R = rotate camera. Content fixed.');
     }
 
     exit(scene) {
@@ -167,17 +164,17 @@ export class HorseWorld {
     update(time, frame, renderer, scene, camera) {
         const delta = this.clock.getDelta();
         if (this.mixer) this.mixer.update(delta);
-        if (!this.object || !this.keys) return;
+        if (!this.camera || !this.keys) return;
 
-        const yaw = this.object.rotation.y;
+        const yaw = this.camera.rotation.y;
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
-        if (this.keys['KeyW']) this.object.position.addScaledVector(forward, MOVE_SPEED * delta);
-        if (this.keys['KeyS']) this.object.position.addScaledVector(forward, -MOVE_SPEED * delta);
-        if (this.keys['KeyD']) this.object.position.addScaledVector(right, MOVE_SPEED * delta);
-        if (this.keys['KeyA']) this.object.position.addScaledVector(right, -MOVE_SPEED * delta);
-        if (this.keys['ArrowRight']) this.object.rotation.y -= ROTATE_SPEED * delta;
-        if (this.keys['ArrowLeft']) this.object.rotation.y += ROTATE_SPEED * delta;
+        if (this.keys['KeyW']) this.camera.position.addScaledVector(forward, MOVE_SPEED * delta);
+        if (this.keys['KeyS']) this.camera.position.addScaledVector(forward, -MOVE_SPEED * delta);
+        if (this.keys['KeyD']) this.camera.position.addScaledVector(right, MOVE_SPEED * delta);
+        if (this.keys['KeyA']) this.camera.position.addScaledVector(right, -MOVE_SPEED * delta);
+        if (this.keys['ArrowRight']) this.camera.rotation.y -= ROTATE_SPEED * delta;
+        if (this.keys['ArrowLeft']) this.camera.rotation.y += ROTATE_SPEED * delta;
     }
 }
