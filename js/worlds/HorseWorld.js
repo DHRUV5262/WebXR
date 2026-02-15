@@ -22,9 +22,9 @@ const HORSE_GLB_LOCAL = './assets/Horse.glb';
 
 const CAM_HEIGHT = 1.6;
 const FRONT_Z = -1.8;   // content group fixed in front of where camera starts
-const HORSE_SCALE = 1.2; // smaller so the world feels bigger and you can see it properly
-const MOVE_SPEED = 3;   // units per second (camera movement)
-const ROTATE_SPEED = 2.0;
+const HORSE_SCALE = 0.85; // smaller so you can see the scene properly
+const MOVE_SPEED = 6;   // units per second (camera movement)
+const ROTATE_SPEED = 2.2;
 
 export class HorseWorld {
     constructor() {
@@ -74,42 +74,35 @@ export class HorseWorld {
 
         const loader = new GLTFLoader();
         const onLoaded = (gltf) => {
-            // Same as official example: use only the first child (the actual horse mesh), not glb.scene.
-            // This avoids root transforms and any extra nodes (e.g. camera) that could stick to the viewer.
             const root = gltf.scene;
-            const horseMesh = root.children && root.children[0];
-            if (!horseMesh) {
-                console.warn('HorseWorld: no children in GLB scene, adding root.');
-                contentGroup.parent && contentGroup.add(root);
-                root.scale.setScalar(HORSE_SCALE);
-                root.position.set(-0.6, 0, 0);
-                root.rotation.y = Math.PI;
-                if (gltf.animations && gltf.animations.length > 0) {
-                    this.mixer = new THREE.AnimationMixer(root);
-                    this.mixer.clipAction(gltf.animations[0]).play();
-                }
-                return;
-            }
 
-            root.remove(horseMesh);
-            horseMesh.scale.setScalar(HORSE_SCALE);
-            horseMesh.position.set(-0.6, 0, 0);
-            horseMesh.rotation.y = Math.PI;
-            if (horseMesh.material) {
-                const mat = horseMesh.material;
-                if (!Array.isArray(mat)) mat.side = THREE.DoubleSide;
-                else mat.forEach(m => { m.side = THREE.DoubleSide; });
-            }
+            // Strip any camera nodes so nothing sticks to the viewer.
+            const toRemove = [];
+            root.traverse((child) => { if (child.isCamera) toRemove.push(child); });
+            toRemove.forEach((c) => c.parent && c.parent.remove(c));
+
+            root.scale.setScalar(HORSE_SCALE);
+            root.position.set(-0.6, 0, 0);
+            root.rotation.y = Math.PI;
+            root.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    const mat = child.material;
+                    if (!Array.isArray(mat)) mat.side = THREE.DoubleSide;
+                    else mat.forEach(m => { m.side = THREE.DoubleSide; });
+                }
+            });
 
             if (contentGroup.parent) {
-                contentGroup.add(horseMesh);
-                console.log('HorseWorld: horse mesh (first child) added to content group.');
+                contentGroup.add(root);
+                console.log('HorseWorld: horse added.');
             }
 
-            // Mixer on full scene so the clip still updates the mesh by reference.
+            // Keep full hierarchy so mixer can drive morph animation; enable clip and loop.
             if (gltf.animations && gltf.animations.length > 0) {
                 this.mixer = new THREE.AnimationMixer(root);
-                this.mixer.clipAction(gltf.animations[0]).play();
+                const action = this.mixer.clipAction(gltf.animations[0]);
+                action.setLoop(THREE.LoopRepeat);
+                action.play();
             }
         };
         const onError = (err) => {
