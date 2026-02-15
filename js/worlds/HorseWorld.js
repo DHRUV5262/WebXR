@@ -1,16 +1,23 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// Same horse model used in three.js examples (webgl_morphtargets_horse / instancing_morph)
+/*
+ * Camera vs object movement (not a game engine):
+ * - In Three.js the CAMERA is just another object: it has position and rotation.
+ *   The camera "looks" along its local -Z axis. So moving the camera moves the "viewer".
+ * - Here we keep the CAMERA FIXED and move the SCENE (horse + cubes) with WASD/arrows.
+ *   So you're not "walking through the world" — you're repositioning the content in front of you.
+ *
+ * Three.js axes (right-handed, Y-up):
+ *   X = right,  Y = up,  Z = toward you (out of screen). Camera looks along -Z.
+ */
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 const HORSE_GLB_LOCAL = './assets/Horse.glb';
 
-// Camera in main.js is at (0, 1.6, 0) looking down -Z.
 const CAM_HEIGHT = 1.6;
-const FRONT_Z = -1.8; // 1.8m in front of camera
-
-const MOVE_SPEED = 2.5;   // units per second
-const ROTATE_SPEED = 2.0; // radians per second
+const FRONT_Z = -1.8;   // content group placed this far in front of camera
+const MOVE_SPEED = 2.5; // units per second (moving the content group)
+const ROTATE_SPEED = 2.0;
 
 export class HorseWorld {
     constructor() {
@@ -27,45 +34,39 @@ export class HorseWorld {
     enter(scene, renderer, camera) {
         scene.background = new THREE.Color(0x2d2d44);
 
-        this.camera = camera;
-        // Start in front of the scene so you're not under the horse
-        this.camera.position.set(0, CAM_HEIGHT, 2);
-        this.camera.rotation.set(0, 0, 0);
+        this.camera = camera; // only for reset on exit
+        camera.position.set(0, CAM_HEIGHT, 2);
+        camera.rotation.set(0, 0, 0);
 
-        // Keyboard: WASD + Arrow Left/Right (only active in Horse world)
         this.keys = {};
         this.boundKeyDown = (e) => { this.keys[e.code] = true; };
         this.boundKeyUp = (e) => { this.keys[e.code] = false; };
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
 
+        // Single group for horse + cubes. We move THIS group with WASD/arrows (camera stays put).
         this.object = new THREE.Group();
+        this.object.position.set(0, CAM_HEIGHT, FRONT_Z);
         scene.add(this.object);
 
-        this.object = new THREE.Group();
-        scene.add(this.object);
-
-        // ---- 1) Big reference cube: MeshBasicMaterial so it's visible even without lights ----
+        // All positions are LOCAL to this.object (origin = center of content).
         const cubeGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
         const cubeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         this.referenceCube = new THREE.Mesh(cubeGeom, cubeMat);
-        this.referenceCube.position.set(0.6, CAM_HEIGHT, FRONT_Z); // to the right of center
+        this.referenceCube.position.set(0.6, 0, 0);
         this.object.add(this.referenceCube);
 
-        // ---- 2) Second cube (green) dead center in front ----
         const cube2Geom = new THREE.BoxGeometry(0.4, 0.4, 0.4);
         const cube2Mat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const centerCube = new THREE.Mesh(cube2Geom, cube2Mat);
-        centerCube.position.set(0, CAM_HEIGHT, FRONT_Z);
-        this.object.add(centerCube);
-        this.centerCube = centerCube;
+        this.centerCube = new THREE.Mesh(cube2Geom, cube2Mat);
+        this.centerCube.position.set(0, 0, 0);
+        this.object.add(this.centerCube);
 
-        // ---- 3) Horse: load and place left of center ----
         const loader = new GLTFLoader();
         const onLoaded = (gltf) => {
             const model = gltf.scene;
             model.scale.setScalar(4);
-            model.position.set(-0.6, CAM_HEIGHT, FRONT_Z);
+            model.position.set(-0.6, 0, 0);
             model.rotation.y = Math.PI;
             model.traverse((child) => {
                 if (child.isMesh && child.material) {
@@ -87,11 +88,10 @@ export class HorseWorld {
         };
         loader.load(HORSE_GLB_URL, onLoaded, undefined, onError);
 
-        // ---- 4) Lights (for horse materials that need it) ----
         this.object.add(new THREE.DirectionalLight(0xffffff, 1.2));
         this.object.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-        console.log('HorseWorld: entered. WASD = move, Arrow L/R = rotate.');
+        console.log('HorseWorld: WASD = move content, Arrow L/R = rotate content. Camera fixed.');
     }
 
     exit(scene) {
@@ -133,20 +133,18 @@ export class HorseWorld {
 
     update(time, frame, renderer, scene, camera) {
         const delta = this.clock.getDelta();
-
         if (this.mixer) this.mixer.update(delta);
+        if (!this.object || !this.keys) return;
 
-        if (!this.camera || !this.keys) return;
-
-        const yaw = this.camera.rotation.y;
+        const yaw = this.object.rotation.y;
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
-        if (this.keys['KeyW']) this.camera.position.addScaledVector(forward, MOVE_SPEED * delta);
-        if (this.keys['KeyS']) this.camera.position.addScaledVector(forward, -MOVE_SPEED * delta);
-        if (this.keys['KeyD']) this.camera.position.addScaledVector(right, MOVE_SPEED * delta);
-        if (this.keys['KeyA']) this.camera.position.addScaledVector(right, -MOVE_SPEED * delta);
-        if (this.keys['ArrowRight']) this.camera.rotation.y -= ROTATE_SPEED * delta;
-        if (this.keys['ArrowLeft']) this.camera.rotation.y += ROTATE_SPEED * delta;
+        if (this.keys['KeyW']) this.object.position.addScaledVector(forward, MOVE_SPEED * delta);
+        if (this.keys['KeyS']) this.object.position.addScaledVector(forward, -MOVE_SPEED * delta);
+        if (this.keys['KeyD']) this.object.position.addScaledVector(right, MOVE_SPEED * delta);
+        if (this.keys['KeyA']) this.object.position.addScaledVector(right, -MOVE_SPEED * delta);
+        if (this.keys['ArrowRight']) this.object.rotation.y -= ROTATE_SPEED * delta;
+        if (this.keys['ArrowLeft']) this.object.rotation.y += ROTATE_SPEED * delta;
     }
 }
