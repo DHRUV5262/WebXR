@@ -2,14 +2,24 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /*
- * Camera vs object movement (not a game engine):
- * - In Three.js the CAMERA is just another object: it has position and rotation.
- *   The camera "looks" along its local -Z axis. So moving the camera moves the "viewer".
- * - Here we keep the CAMERA FIXED and move the SCENE (horse + cubes) with WASD/arrows.
- *   So you're not "walking through the world" — you're repositioning the content in front of you.
+ * Matches the official three.js example: webgl_instancing_morph
+ * https://github.com/mrdoob/three.js/blob/dev/examples/webgl_instancing_morph.html
  *
- * Three.js axes (right-handed, Y-up):
- *   X = right,  Y = up,  Z = toward you (out of screen). Camera looks along -Z.
+ * That example uses only the FIRST CHILD of glb.scene as the horse (dummy = glb.scene.children[0])
+ * and never adds the full glb.scene to the scene — so we do the same: add only the mesh (first child)
+ * to our content group. That avoids any root transform or extra nodes (e.g. camera) from the GLB.
+ *
+ * SCENE HIERARCHY:
+ *   scene
+ *     ├── camera
+ *     └── this.object (Group we move with WASD)
+ *           ├── referenceCube (red), centerCube (green)
+ *           ├── horseMesh (glb.scene.children[0] only) at local (-0.6, 0, 0)
+ *           └── lights
+ *
+ * Morph animation: mixer runs on glb.scene (kept in memory, not in scene) so the clip still
+ * updates the same mesh by reference. Camera vs object: we move this.object, camera stays fixed.
+ * Axes: X = right, Y = up, Z = toward you. Camera looks along -Z.
  */
 const HORSE_GLB_URL = 'https://threejs.org/examples/models/gltf/Horse.glb';
 const HORSE_GLB_LOCAL = './assets/Horse.glb';
@@ -62,23 +72,46 @@ export class HorseWorld {
         this.centerCube.position.set(0, 0, 0);
         this.object.add(this.centerCube);
 
+        // Capture group reference so the async callback always adds the horse to THIS group (not camera).
+        const contentGroup = this.object;
+
         const loader = new GLTFLoader();
         const onLoaded = (gltf) => {
-            const model = gltf.scene;
-            model.scale.setScalar(4);
-            model.position.set(-0.6, 0, 0);
-            model.rotation.y = Math.PI;
-            model.traverse((child) => {
-                if (child.isMesh && child.material) {
-                    const mat = child.material;
-                    if (!Array.isArray(mat)) mat.side = THREE.DoubleSide;
-                    else mat.forEach(m => { m.side = THREE.DoubleSide; });
+            // Same as official example: use only the first child (the actual horse mesh), not glb.scene.
+            // This avoids root transforms and any extra nodes (e.g. camera) that could stick to the viewer.
+            const root = gltf.scene;
+            const horseMesh = root.children && root.children[0];
+            if (!horseMesh) {
+                console.warn('HorseWorld: no children in GLB scene, adding root.');
+                contentGroup.parent && contentGroup.add(root);
+                root.scale.setScalar(4);
+                root.position.set(-0.6, 0, 0);
+                root.rotation.y = Math.PI;
+                if (gltf.animations && gltf.animations.length > 0) {
+                    this.mixer = new THREE.AnimationMixer(root);
+                    this.mixer.clipAction(gltf.animations[0]).play();
                 }
-            });
-            this.object.add(model);
-            console.log('HorseWorld: horse loaded.');
+                return;
+            }
+
+            root.remove(horseMesh);
+            horseMesh.scale.setScalar(4);
+            horseMesh.position.set(-0.6, 0, 0);
+            horseMesh.rotation.y = Math.PI;
+            if (horseMesh.material) {
+                const mat = horseMesh.material;
+                if (!Array.isArray(mat)) mat.side = THREE.DoubleSide;
+                else mat.forEach(m => { m.side = THREE.DoubleSide; });
+            }
+
+            if (contentGroup.parent) {
+                contentGroup.add(horseMesh);
+                console.log('HorseWorld: horse mesh (first child) added to content group.');
+            }
+
+            // Mixer on full scene so the clip still updates the mesh by reference.
             if (gltf.animations && gltf.animations.length > 0) {
-                this.mixer = new THREE.AnimationMixer(model);
+                this.mixer = new THREE.AnimationMixer(root);
                 this.mixer.clipAction(gltf.animations[0]).play();
             }
         };
