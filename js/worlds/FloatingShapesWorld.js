@@ -3,14 +3,16 @@ import * as THREE from 'three';
 export class FloatingShapesWorld {
     constructor() {
         this.object = null;
-        this.shapes = []; // Renamed from 'cubes' to 'shapes'
-        this.boundary = 4; 
-        
-        // Raycaster for click detection
+        this.instancedMeshes = [];      // one per geometry type
+        this.instanceData = [];         // array of 5 arrays: per-instance { position, velocity, rotation, rotationSpeed, scale, color, emissive }
+        this.boundary = 4;
         this.raycaster = new THREE.Raycaster();
         this.workingMatrix = new THREE.Matrix4();
         this.debugRayLine = null;
         this.debugRayTimeout = null;
+        this._tempMatrix = new THREE.Matrix4();
+        this._tempColor = new THREE.Color();
+        this._dummy = new THREE.Object3D();
     }
 
     enter(scene, renderer) {
@@ -20,52 +22,77 @@ export class FloatingShapesWorld {
         const countEl = typeof document !== 'undefined' && document.getElementById('shape-count-value');
         const count = countEl ? Math.max(10, Math.min(2000, parseInt(countEl.textContent, 10) || 200)) : 200;
 
-        // Smaller base geometries so many shapes remain visible
+        // Original (larger) geometry sizes
         const geometries = [
-            new THREE.BoxGeometry(0.08, 0.08, 0.08),
-            new THREE.SphereGeometry(0.06, 12, 12),
-            new THREE.ConeGeometry(0.06, 0.12, 12),
-            new THREE.TorusGeometry(0.05, 0.02, 8, 16),
-            new THREE.OctahedronGeometry(0.08)
+            new THREE.BoxGeometry(0.2, 0.2, 0.2),
+            new THREE.SphereGeometry(0.15, 16, 16),
+            new THREE.ConeGeometry(0.15, 0.3, 16),
+            new THREE.TorusGeometry(0.12, 0.05, 8, 20),
+            new THREE.OctahedronGeometry(0.2)
         ];
 
+        // Bucket instances by type
+        const typeData = [[], [], [], [], []]; // 5 types
         for (let i = 0; i < count; i++) {
-            const material = new THREE.MeshStandardMaterial({
-                color: Math.random() * 0xffffff,
-                roughness: 0.5,
-                metalness: 0.5
-            });
-
-            const geometry = geometries[Math.floor(Math.random() * geometries.length)];
-            const object = new THREE.Mesh(geometry, material);
-
-            object.position.x = Math.random() * 6 - 3;
-            object.position.y = Math.random() * 6 - 3;
-            object.position.z = Math.random() * 6 - 3;
-
-            object.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-
-            // Smaller scale range (0.15–0.55) so many shapes fit on screen
-            const scale = Math.random() * 0.4 + 0.15;
-            object.scale.set(scale, scale, scale);
-
-            // Custom data
-            object.userData = {
-                rotationSpeed: {
-                    x: Math.random() * 0.02,
-                    y: Math.random() * 0.02,
-                    z: Math.random() * 0.02
-                },
-                // Use a THREE.Vector3 for velocity so we can use vector helpers
+            const typeIndex = Math.floor(Math.random() * 5);
+            const scale = Math.random() + 0.5;
+            typeData[typeIndex].push({
+                position: new THREE.Vector3(
+                    Math.random() * 6 - 3,
+                    Math.random() * 6 - 3,
+                    Math.random() * 6 - 3
+                ),
                 velocity: new THREE.Vector3(
                     (Math.random() - 0.5) * 0.01,
                     (Math.random() - 0.5) * 0.01,
                     (Math.random() - 0.5) * 0.01
-                )
-            };
+                ),
+                rotation: new THREE.Euler(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                ),
+                rotationSpeed: new THREE.Vector3(
+                    Math.random() * 0.02,
+                    Math.random() * 0.02,
+                    Math.random() * 0.02
+                ),
+                scale: new THREE.Vector3(scale, scale, scale),
+                color: new THREE.Color().setHex(Math.random() * 0xffffff),
+                emissive: 0
+            });
+        }
 
-            this.object.add(object);
-            this.shapes.push(object);
+        this.instanceData = typeData;
+
+        for (let t = 0; t < 5; t++) {
+            const data = typeData[t];
+            if (data.length === 0) continue;
+
+            const material = new THREE.MeshStandardMaterial({
+                roughness: 0.5,
+                metalness: 0.5,
+                vertexColors: false
+            });
+            const mesh = new THREE.InstancedMesh(geometries[t], material, data.length);
+            mesh.userData.instanceData = data;
+            mesh.count = data.length;
+
+            const dummy = new THREE.Object3D();
+            for (let i = 0; i < data.length; i++) {
+                const d = data[i];
+                dummy.position.copy(d.position);
+                dummy.rotation.copy(d.rotation);
+                dummy.scale.copy(d.scale);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+                mesh.setColorAt(i, d.color);
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+            this.object.add(mesh);
+            this.instancedMeshes.push({ mesh, geometry: geometries[t], material });
         }
 
         scene.add(this.object);
@@ -83,17 +110,16 @@ export class FloatingShapesWorld {
         this.scene = null;
         if (this.object) {
             scene.remove(this.object);
-            this.shapes.forEach(shape => {
-                // Note: Geometries are shared, but for simplicity here we let them be cleaned up by GC or explicit disposal if we tracked them better.
-                // In a robust app, we'd dispose the 5 shared geometries separately.
-                shape.material.dispose();
+            this.instancedMeshes.forEach(({ mesh, geometry, material }) => {
+                geometry.dispose();
+                material.dispose();
             });
-            this.shapes = [];
+            this.instancedMeshes = [];
+            this.instanceData = [];
             this.object = null;
         }
     }
 
-    // Draw a short-lived debug line along the raycaster (desktop click or VR/AR trigger)
     showDebugRay(raycaster, length = 8) {
         if (!this.scene) return;
         if (this.debugRayTimeout) clearTimeout(this.debugRayTimeout);
@@ -104,8 +130,7 @@ export class FloatingShapesWorld {
         }
         const start = raycaster.ray.origin.clone();
         const end = start.clone().add(raycaster.ray.direction.clone().multiplyScalar(length));
-        const points = [start, end];
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
         const material = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
         this.debugRayLine = new THREE.Line(geometry, material);
         this.scene.add(this.debugRayLine);
@@ -120,7 +145,6 @@ export class FloatingShapesWorld {
         }, 400);
     }
 
-    // Shared: push the first shape hit by the given raycaster (used by both mouse and VR controller)
     pushShapeAtRay(raycaster) {
         this.showDebugRay(raycaster);
         if (!this.object) return;
@@ -128,22 +152,23 @@ export class FloatingShapesWorld {
         if (intersects.length === 0) return;
 
         const hit = intersects[0];
-        // Optional: shorten debug ray to hit point so it's clear what was hit
         this.showDebugRay(raycaster, hit.distance);
-        const selectedObject = hit.object;
-        // Direction away from the click/controller (world space)
+        const mesh = hit.object;
+        if (!mesh.isInstancedMesh || hit.instanceId === undefined) return;
+        const data = mesh.userData.instanceData;
+        if (!data || !data[hit.instanceId]) return;
+
+        const d = data[hit.instanceId];
         const direction = new THREE.Vector3()
             .subVectors(hit.point, raycaster.ray.origin)
             .normalize();
-
-        selectedObject.userData.velocity.addScaledVector(direction, 0.2);
-        selectedObject.material.color.setHex(0xffffff);
-        selectedObject.material.emissive.setHex(0xff0000);
-        selectedObject.userData.rotationSpeed.x += 0.1;
-        selectedObject.userData.rotationSpeed.y += 0.1;
+        d.velocity.addScaledVector(direction, 0.2);
+        d.color.setHex(0xffffff);
+        d.emissive = 1;
+        d.rotationSpeed.x += 0.1;
+        d.rotationSpeed.y += 0.1;
     }
 
-    // VR/AR: controller trigger
     onSelect(controller) {
         this.workingMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
@@ -151,38 +176,37 @@ export class FloatingShapesWorld {
         this.pushShapeAtRay(this.raycaster);
     }
 
-    // Desktop: mouse click — pass a raycaster already set from camera + mouse
     onPointerClick(raycaster) {
         this.pushShapeAtRay(raycaster);
     }
 
     update(time, frame) {
-        this.shapes.forEach(shape => {
-            // Rotation
-            shape.rotation.x += shape.userData.rotationSpeed.x;
-            shape.rotation.y += shape.userData.rotationSpeed.y;
-            shape.rotation.z += shape.userData.rotationSpeed.z;
-
-            // Movement
-            shape.position.add(shape.userData.velocity);
-
-            // Friction (slow down the "impulse" from clicks over time)
-            shape.userData.velocity.multiplyScalar(0.98);
-            
-            // Keep a minimum speed so they don't stop completely
-            if (shape.userData.velocity.length() < 0.01) {
-                 shape.userData.velocity.normalize().multiplyScalar(0.01);
+        const dummy = this._dummy;
+        const red = 0xff0000;
+        for (const { mesh } of this.instancedMeshes) {
+            const data = mesh.userData.instanceData;
+            for (let i = 0; i < data.length; i++) {
+                const d = data[i];
+                d.rotation.x += d.rotationSpeed.x;
+                d.rotation.y += d.rotationSpeed.y;
+                d.rotation.z += d.rotationSpeed.z;
+                d.position.add(d.velocity);
+                d.velocity.multiplyScalar(0.98);
+                if (d.velocity.length() < 0.01) d.velocity.normalize().multiplyScalar(0.01);
+                if (Math.abs(d.position.x) > this.boundary) d.velocity.x *= -1;
+                if (Math.abs(d.position.y) > this.boundary) d.velocity.y *= -1;
+                if (Math.abs(d.position.z) > this.boundary) d.velocity.z *= -1;
+                d.emissive *= 0.9;
+                this._tempColor.setHex(red).lerp(d.color, 1 - d.emissive);
+                dummy.position.copy(d.position);
+                dummy.rotation.copy(d.rotation);
+                dummy.scale.copy(d.scale);
+                dummy.updateMatrix();
+                mesh.setMatrixAt(i, dummy.matrix);
+                mesh.setColorAt(i, this._tempColor);
             }
-
-            // Boundary Check (Bounce)
-            if (Math.abs(shape.position.x) > this.boundary) shape.userData.velocity.x *= -1;
-            if (Math.abs(shape.position.y) > this.boundary) shape.userData.velocity.y *= -1;
-            if (Math.abs(shape.position.z) > this.boundary) shape.userData.velocity.z *= -1;
-            
-            // Reduce glow over time
-            if (shape.material.emissive.r > 0) {
-                shape.material.emissive.multiplyScalar(0.9);
-            }
-        });
+            mesh.instanceMatrix.needsUpdate = true;
+            if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        }
     }
 }
