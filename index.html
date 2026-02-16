@@ -79,19 +79,19 @@
             pointer-events: auto;
         }
 
-        /* FPS display - top left */
+        /* FPS display - bottom left, large text */
         #fps-display {
             position: fixed;
-            top: 20px;
-            left: 20px;
+            bottom: 24px;
+            left: 24px;
             z-index: 101;
             color: #fff;
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-            padding: 8px 12px;
-            background: rgba(0,0,0,0.4);
-            border-radius: 6px;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
             font-family: 'Poppins', sans-serif;
             opacity: 0;
             transition: opacity 1s ease 1s;
@@ -101,7 +101,7 @@
             opacity: 1;
         }
 
-        /* Shape count bar - top right */
+        /* Shape count bar - top right, large text */
         #shape-count-bar {
             position: fixed;
             top: 20px;
@@ -109,12 +109,12 @@
             z-index: 101;
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 8px;
+            gap: 14px;
+            padding: 14px 20px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
             color: #fff;
-            font-size: 15px;
+            font-size: 24px;
             font-family: 'Poppins', sans-serif;
             opacity: 0;
             transition: opacity 1s ease 1s;
@@ -122,32 +122,33 @@
         #shape-count-bar.visible {
             opacity: 1;
         }
-        #shape-count-bar label { font-weight: 600; }
+        #shape-count-bar label { font-weight: 700; font-size: 24px; }
         #shape-count-bar .count-controls {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
         }
         #shape-count-bar .count-num {
-            min-width: 48px;
+            min-width: 64px;
             text-align: center;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 26px;
         }
         #shape-count-bar button.count-btn {
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
             padding: 0;
-            font-size: 18px;
+            font-size: 26px;
             line-height: 1;
             cursor: pointer;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 6px;
+            background: rgba(255,255,255,0.25);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 8px;
             color: #fff;
-            font-weight: 600;
+            font-weight: 700;
         }
         #shape-count-bar button.count-btn:hover {
-            background: rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.4);
         }
 
         button.world-btn {
