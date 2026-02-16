@@ -22,20 +22,20 @@ export class FloatingShapesWorld {
         const countEl = typeof document !== 'undefined' && document.getElementById('shape-count-value');
         const count = countEl ? Math.max(10, Math.min(2000, parseInt(countEl.textContent, 10) || 200)) : 200;
 
-        // Original (larger) geometry sizes
+        // Larger base geometry sizes
         const geometries = [
-            new THREE.BoxGeometry(0.2, 0.2, 0.2),
-            new THREE.SphereGeometry(0.15, 16, 16),
-            new THREE.ConeGeometry(0.15, 0.3, 16),
-            new THREE.TorusGeometry(0.12, 0.05, 8, 20),
-            new THREE.OctahedronGeometry(0.2)
+            new THREE.BoxGeometry(0.5, 0.5, 0.5),
+            new THREE.SphereGeometry(0.35, 16, 16),
+            new THREE.ConeGeometry(0.25, 0.5, 16),
+            new THREE.TorusGeometry(0.2, 0.08, 8, 20),
+            new THREE.OctahedronGeometry(0.35)
         ];
 
         // Bucket instances by type
         const typeData = [[], [], [], [], []]; // 5 types
         for (let i = 0; i < count; i++) {
             const typeIndex = Math.floor(Math.random() * 5);
-            const scale = Math.random() + 0.5;
+            const scale = Math.random() * 0.8 + 1.0; // 1.0 to 1.8
             typeData[typeIndex].push({
                 position: new THREE.Vector3(
                     Math.random() * 6 - 3,
