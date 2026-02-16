@@ -94,6 +94,13 @@ function init() {
         });
     }
 
+    const instancingToggle = document.getElementById('instancing-toggle');
+    if (instancingToggle) {
+        instancingToggle.addEventListener('change', () => {
+            if (worldManager.isCurrentWorldFloatingShapes()) worldManager.refreshCurrentWorld();
+        });
+    }
+
     // 9. Start
     worldManager.loadInitialWorld();
     renderer.setAnimationLoop(render);

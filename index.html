@@ -150,6 +150,20 @@
         #shape-count-bar button.count-btn:hover {
             background: rgba(255,255,255,0.4);
         }
+        #shape-count-bar .instancing-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+        #shape-count-bar .instancing-toggle input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
 
         button.world-btn {
             padding: 12px 24px;
@@ -196,6 +210,9 @@
             <span class="count-num" id="shape-count-value">200</span>
             <button type="button" class="count-btn" id="shape-count-plus" aria-label="Increase">+</button>
         </div>
+        <label class="instancing-toggle">
+            <input type="checkbox" id="instancing-toggle" checked> Instancing
+        </label>
     </div>
 
     <!-- 3D Canvas Container -->
