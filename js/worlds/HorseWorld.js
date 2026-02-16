@@ -22,7 +22,7 @@ const HORSE_GLB_LOCAL = './assets/Horse.glb';
 
 const CAM_HEIGHT = 1.6;
 const FRONT_Z = -1.8;   // content group fixed in front of where camera starts
-const HORSE_SCALE = 0.85; // smaller so you can see the scene properly
+const HORSE_SCALE = 0.01; // smaller so you can see the scene properly
 const MOVE_SPEED = 6;   // units per second (camera movement)
 const ROTATE_SPEED = 2.2;
 
