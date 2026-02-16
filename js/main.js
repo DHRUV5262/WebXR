@@ -78,7 +78,7 @@ function init() {
     const shapePlus = document.getElementById('shape-count-plus');
     const shapeCountValue = document.getElementById('shape-count-value');
     const MIN_SHAPES = 10;
-    const MAX_SHAPES = 2000;
+    const MAX_SHAPES = 10000;
     if (shapeMinus && shapePlus && shapeCountValue) {
         shapeMinus.addEventListener('click', () => {
             let n = parseInt(shapeCountValue.textContent, 10) || 200;

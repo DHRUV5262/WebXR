@@ -23,7 +23,7 @@ export class FloatingShapesWorld {
         this.object = new THREE.Group();
 
         const countEl = typeof document !== 'undefined' && document.getElementById('shape-count-value');
-        const count = countEl ? Math.max(10, Math.min(2000, parseInt(countEl.textContent, 10) || 200)) : 200;
+        const count = countEl ? Math.max(10, Math.min(10000, parseInt(countEl.textContent, 10) || 200)) : 200;
         const instancingEl = typeof document !== 'undefined' && document.getElementById('instancing-toggle');
         this.useInstancing = instancingEl ? instancingEl.checked : true;
 
