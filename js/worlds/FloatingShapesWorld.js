@@ -28,11 +28,11 @@ export class FloatingShapesWorld {
         this.useInstancing = instancingEl ? instancingEl.checked : true;
 
         const geometries = [
-            new THREE.BoxGeometry(0.5, 0.5, 0.5),
-            new THREE.SphereGeometry(0.35, 16, 16),
-            new THREE.ConeGeometry(0.25, 0.5, 16),
-            new THREE.TorusGeometry(0.2, 0.08, 8, 20),
-            new THREE.OctahedronGeometry(0.35)
+            new THREE.BoxGeometry(0.2, 0.2, 0.2),
+            new THREE.SphereGeometry(0.15, 12, 12),
+            new THREE.ConeGeometry(0.1, 0.2, 12),
+            new THREE.TorusGeometry(0.08, 0.03, 8, 16),
+            new THREE.OctahedronGeometry(0.15)
         ];
 
         if (this.useInstancing) {
@@ -50,7 +50,7 @@ export class FloatingShapesWorld {
         const typeData = [[], [], [], [], []];
         for (let i = 0; i < count; i++) {
             const typeIndex = Math.floor(Math.random() * 5);
-            const scale = Math.random() * 0.8 + 1.0;
+            const scale = Math.random() * 0.4 + 0.3;
             typeData[typeIndex].push({
                 position: new THREE.Vector3(Math.random() * 6 - 3, Math.random() * 6 - 3, Math.random() * 6 - 3),
                 velocity: new THREE.Vector3((Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01, (Math.random() - 0.5) * 0.01),
@@ -89,7 +89,7 @@ export class FloatingShapesWorld {
     _enterNonInstanced(scene, count, geometries) {
         for (let i = 0; i < count; i++) {
             const typeIndex = Math.floor(Math.random() * 5);
-            const scale = Math.random() * 0.8 + 1.0;
+            const scale = Math.random() * 0.4 + 0.3;
             const material = new THREE.MeshStandardMaterial({
                 color: Math.random() * 0xffffff,
                 roughness: 0.5,
