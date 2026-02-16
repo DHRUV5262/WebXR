@@ -29,9 +29,9 @@ export class FloatingShapesWorld {
 
         const geometries = [
             new THREE.BoxGeometry(0.2, 0.2, 0.2),
-            new THREE.SphereGeometry(0.15, 12, 12),
-            new THREE.ConeGeometry(0.1, 0.2, 12),
-            new THREE.TorusGeometry(0.08, 0.03, 8, 16),
+            new THREE.SphereGeometry(0.15, 16, 16),
+            new THREE.ConeGeometry(0.12, 0.24, 16),
+            new THREE.TorusGeometry(0.1, 0.04, 8, 20),
             new THREE.OctahedronGeometry(0.15)
         ];
 
