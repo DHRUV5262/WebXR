@@ -113,9 +113,16 @@ export class WorldManager {
     updateUI() {
         const btn = document.getElementById('switchWorld');
         if (btn) {
-            // AR World handles its own UI text during scanning, so we might check that
             if (this.worldNames[this.currentWorldIndex] !== "AR Cube (Hit Test)") {
                 btn.textContent = `Switch World (Current: ${this.worldNames[this.currentWorldIndex]})`;
+            }
+        }
+        const shapeBar = document.getElementById('shape-count-bar');
+        if (shapeBar) {
+            if (this.worldNames[this.currentWorldIndex] === "Floating Shapes") {
+                shapeBar.classList.add('visible');
+            } else {
+                shapeBar.classList.remove('visible');
             }
         }
     }

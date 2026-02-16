@@ -1,0 +1,1 @@
+I'm primarily interested in the total compensation package including base salary, equity, and benefits. For base salary specifically, I'm targeting $110,000-$130,000 depending on the equity component and growth potential. I'm excited about the opportunity and happy to discuss what makes sense for both sides

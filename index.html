@@ -79,89 +79,91 @@
             pointer-events: auto;
         }
 
-        /* FPS display - bottom left, large text */
+        /* FPS display - bottom left, compact */
         #fps-display {
             position: fixed;
-            bottom: 24px;
-            left: 24px;
+            bottom: 12px;
+            left: 12px;
             z-index: 101;
             color: #fff;
-            font-size: 32px;
-            font-weight: 700;
-            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
-            padding: 12px 20px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.45);
+            border-radius: 4px;
             font-family: 'Poppins', sans-serif;
             opacity: 0;
-            transition: opacity 1s ease 1s;
+            transition: opacity 0.3s ease;
             pointer-events: none;
         }
         #fps-display.visible {
             opacity: 1;
         }
 
-        /* Shape count bar - top right, large text */
+        /* Shape count bar - top right, compact, only visible in Floating Shapes */
         #shape-count-bar {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 12px;
+            right: 12px;
             z-index: 101;
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px 20px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 10px;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 6px;
             color: #fff;
-            font-size: 24px;
+            font-size: 13px;
             font-family: 'Poppins', sans-serif;
             opacity: 0;
-            transition: opacity 1s ease 1s;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
         #shape-count-bar.visible {
             opacity: 1;
+            pointer-events: auto;
         }
-        #shape-count-bar label { font-weight: 700; font-size: 24px; }
+        #shape-count-bar label { font-weight: 600; font-size: 13px; }
         #shape-count-bar .count-controls {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
         }
         #shape-count-bar .count-num {
-            min-width: 64px;
+            min-width: 40px;
             text-align: center;
-            font-weight: 700;
-            font-size: 26px;
+            font-weight: 600;
+            font-size: 14px;
         }
         #shape-count-bar button.count-btn {
-            width: 44px;
-            height: 44px;
+            width: 28px;
+            height: 28px;
             padding: 0;
-            font-size: 26px;
+            font-size: 16px;
             line-height: 1;
             cursor: pointer;
-            background: rgba(255,255,255,0.25);
-            border: 1px solid rgba(255,255,255,0.4);
-            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 4px;
             color: #fff;
-            font-weight: 700;
+            font-weight: 600;
         }
         #shape-count-bar button.count-btn:hover {
-            background: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.35);
         }
         #shape-count-bar .instancing-toggle {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 18px;
+            gap: 4px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             user-select: none;
         }
         #shape-count-bar .instancing-toggle input {
-            width: 20px;
-            height: 20px;
+            width: 14px;
+            height: 14px;
             cursor: pointer;
         }
 
@@ -207,7 +209,7 @@
         <label>Shapes</label>
         <div class="count-controls">
             <button type="button" class="count-btn" id="shape-count-minus" aria-label="Decrease">−</button>
-            <span class="count-num" id="shape-count-value">200</span>
+            <span class="count-num" id="shape-count-value">1000</span>
             <button type="button" class="count-btn" id="shape-count-plus" aria-label="Increase">+</button>
         </div>
         <label class="instancing-toggle">

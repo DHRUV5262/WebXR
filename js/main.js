@@ -67,28 +67,28 @@ function init() {
             document.getElementById('canvas-container').classList.add('visible');
             document.getElementById('world-ui').classList.add('visible');
             const fpsEl = document.getElementById('fps-display');
-            const shapeBar = document.getElementById('shape-count-bar');
             if (fpsEl) fpsEl.classList.add('visible');
-            if (shapeBar) shapeBar.classList.add('visible');
+            worldManager.updateUI();
         });
     }
 
-    // Shape count +/- (only applies when in Floating Shapes)
+    // Shape count +/- (only in Floating Shapes; step 1000)
     const shapeMinus = document.getElementById('shape-count-minus');
     const shapePlus = document.getElementById('shape-count-plus');
     const shapeCountValue = document.getElementById('shape-count-value');
     const MIN_SHAPES = 10;
     const MAX_SHAPES = 10000;
+    const SHAPE_STEP = 1000;
     if (shapeMinus && shapePlus && shapeCountValue) {
         shapeMinus.addEventListener('click', () => {
-            let n = parseInt(shapeCountValue.textContent, 10) || 200;
-            n = Math.max(MIN_SHAPES, n - 50);
+            let n = parseInt(shapeCountValue.textContent, 10) || 1000;
+            n = Math.max(MIN_SHAPES, n - SHAPE_STEP);
             shapeCountValue.textContent = n;
             if (worldManager.isCurrentWorldFloatingShapes()) worldManager.refreshCurrentWorld();
         });
         shapePlus.addEventListener('click', () => {
-            let n = parseInt(shapeCountValue.textContent, 10) || 200;
-            n = Math.min(MAX_SHAPES, n + 50);
+            let n = parseInt(shapeCountValue.textContent, 10) || 1000;
+            n = Math.min(MAX_SHAPES, n + SHAPE_STEP);
             shapeCountValue.textContent = n;
             if (worldManager.isCurrentWorldFloatingShapes()) worldManager.refreshCurrentWorld();
         });
