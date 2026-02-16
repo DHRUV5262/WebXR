@@ -78,6 +78,20 @@ export class WorldManager {
         this.switchWorld(nextIndex);
     }
 
+    isCurrentWorldFloatingShapes() {
+        return this.currentWorld && this.currentWorld.constructor.name === 'FloatingShapesWorld';
+    }
+
+    refreshCurrentWorld() {
+        if (!this.currentWorld) return;
+        try {
+            this.currentWorld.exit(this.scene);
+            this.currentWorld.enter(this.scene, this.renderer, this.camera);
+        } catch (e) {
+            console.error('[WorldManager] refreshCurrentWorld error:', e);
+        }
+    }
+
     update(time, frame, camera) {
         if (this.currentWorld && this.currentWorld.update) {
             this.currentWorld.update(time, frame, this.renderer, this.scene, camera);

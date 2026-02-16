@@ -66,6 +66,31 @@ function init() {
             document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('canvas-container').classList.add('visible');
             document.getElementById('world-ui').classList.add('visible');
+            const fpsEl = document.getElementById('fps-display');
+            const shapeBar = document.getElementById('shape-count-bar');
+            if (fpsEl) fpsEl.classList.add('visible');
+            if (shapeBar) shapeBar.classList.add('visible');
+        });
+    }
+
+    // Shape count +/- (only applies when in Floating Shapes)
+    const shapeMinus = document.getElementById('shape-count-minus');
+    const shapePlus = document.getElementById('shape-count-plus');
+    const shapeCountValue = document.getElementById('shape-count-value');
+    const MIN_SHAPES = 10;
+    const MAX_SHAPES = 2000;
+    if (shapeMinus && shapePlus && shapeCountValue) {
+        shapeMinus.addEventListener('click', () => {
+            let n = parseInt(shapeCountValue.textContent, 10) || 200;
+            n = Math.max(MIN_SHAPES, n - 50);
+            shapeCountValue.textContent = n;
+            if (worldManager.isCurrentWorldFloatingShapes()) worldManager.refreshCurrentWorld();
+        });
+        shapePlus.addEventListener('click', () => {
+            let n = parseInt(shapeCountValue.textContent, 10) || 200;
+            n = Math.min(MAX_SHAPES, n + 50);
+            shapeCountValue.textContent = n;
+            if (worldManager.isCurrentWorldFloatingShapes()) worldManager.refreshCurrentWorld();
         });
     }
 
@@ -93,7 +118,21 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+let lastFpsTime = 0;
+let frameCount = 0;
+let fpsValue = 0;
+
 function render(timestamp, frame) {
+    const now = timestamp || performance.now();
+    frameCount++;
+    const elapsed = now - lastFpsTime;
+    if (elapsed >= 200) {
+        fpsValue = Math.round((frameCount * 1000) / elapsed);
+        frameCount = 0;
+        lastFpsTime = now;
+        const fpsEl = document.getElementById('fps-display');
+        if (fpsEl) fpsEl.textContent = `FPS: ${fpsValue}`;
+    }
     worldManager.update(timestamp, frame, camera);
     renderer.render(scene, camera);
 }

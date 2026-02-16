@@ -17,38 +17,36 @@ export class FloatingShapesWorld {
         this.scene = scene;
         this.object = new THREE.Group();
 
-        // 1. Define multiple geometries
+        const countEl = typeof document !== 'undefined' && document.getElementById('shape-count-value');
+        const count = countEl ? Math.max(10, Math.min(2000, parseInt(countEl.textContent, 10) || 200)) : 200;
+
+        // Smaller base geometries so many shapes remain visible
         const geometries = [
-            new THREE.BoxGeometry(0.2, 0.2, 0.2),
-            new THREE.SphereGeometry(0.15, 16, 16),
-            new THREE.ConeGeometry(0.15, 0.3, 16),
-            new THREE.TorusGeometry(0.12, 0.05, 8, 20),
-            new THREE.OctahedronGeometry(0.2)
+            new THREE.BoxGeometry(0.08, 0.08, 0.08),
+            new THREE.SphereGeometry(0.06, 12, 12),
+            new THREE.ConeGeometry(0.06, 0.12, 12),
+            new THREE.TorusGeometry(0.05, 0.02, 8, 16),
+            new THREE.OctahedronGeometry(0.08)
         ];
 
-        // Create 200 random shapes
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < count; i++) {
             const material = new THREE.MeshStandardMaterial({
                 color: Math.random() * 0xffffff,
                 roughness: 0.5,
                 metalness: 0.5
             });
 
-            // Pick a random geometry from the list
             const geometry = geometries[Math.floor(Math.random() * geometries.length)];
-            
             const object = new THREE.Mesh(geometry, material);
 
-            // Random position
             object.position.x = Math.random() * 6 - 3;
-            object.position.y = Math.random() * 6 - 3; // Keep it somewhat centered vertically
+            object.position.y = Math.random() * 6 - 3;
             object.position.z = Math.random() * 6 - 3;
 
-            // Random rotation
             object.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
-            // Random scale
-            const scale = Math.random() + 0.5;
+            // Smaller scale range (0.15–0.55) so many shapes fit on screen
+            const scale = Math.random() * 0.4 + 0.15;
             object.scale.set(scale, scale, scale);
 
             // Custom data

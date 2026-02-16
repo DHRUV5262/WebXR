@@ -79,6 +79,77 @@
             pointer-events: auto;
         }
 
+        /* FPS display - top left */
+        #fps-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 101;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 6px;
+            font-family: 'Poppins', sans-serif;
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+            pointer-events: none;
+        }
+        #fps-display.visible {
+            opacity: 1;
+        }
+
+        /* Shape count bar - top right */
+        #shape-count-bar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            font-family: 'Poppins', sans-serif;
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+        }
+        #shape-count-bar.visible {
+            opacity: 1;
+        }
+        #shape-count-bar label { font-weight: 600; }
+        #shape-count-bar .count-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #shape-count-bar .count-num {
+            min-width: 48px;
+            text-align: center;
+            font-weight: 600;
+        }
+        #shape-count-bar button.count-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 600;
+        }
+        #shape-count-bar button.count-btn:hover {
+            background: rgba(255,255,255,0.35);
+        }
+
         button.world-btn {
             padding: 12px 24px;
             font-size: 16px;
@@ -111,6 +182,19 @@
     <!-- In-World UI (Hidden initially) -->
     <div id="world-ui">
         <button id="switchWorld" class="world-btn">Switch World</button>
+    </div>
+
+    <!-- FPS - top left -->
+    <div id="fps-display">FPS: --</div>
+
+    <!-- Shape count - top right (Floating Shapes) -->
+    <div id="shape-count-bar">
+        <label>Shapes</label>
+        <div class="count-controls">
+            <button type="button" class="count-btn" id="shape-count-minus" aria-label="Decrease">−</button>
+            <span class="count-num" id="shape-count-value">200</span>
+            <button type="button" class="count-btn" id="shape-count-plus" aria-label="Increase">+</button>
+        </div>
     </div>
 
     <!-- 3D Canvas Container -->
