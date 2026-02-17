@@ -82,6 +82,10 @@ export class WorldManager {
         return this.currentWorld && this.currentWorld.constructor.name === 'FloatingShapesWorld';
     }
 
+    isCurrentWorldVideo() {
+        return this.currentWorld && this.currentWorld.constructor.name === 'VideoWorld';
+    }
+
     refreshCurrentWorld() {
         if (!this.currentWorld) return;
         try {
@@ -123,6 +127,14 @@ export class WorldManager {
                 shapeBar.classList.add('visible');
             } else {
                 shapeBar.classList.remove('visible');
+            }
+        }
+        const videoSourceBar = document.getElementById('video-source-bar');
+        if (videoSourceBar) {
+            if (this.worldNames[this.currentWorldIndex] === "Video") {
+                videoSourceBar.classList.add('visible');
+            } else {
+                videoSourceBar.classList.remove('visible');
             }
         }
     }

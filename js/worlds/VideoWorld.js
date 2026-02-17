@@ -1,5 +1,15 @@
 import * as THREE from 'three';
 
+// Stream URL when user selects "Stream video" in the dropdown (e.g. your video-host server or R2).
+const STREAM_VIDEO_URL = 'http://localhost:8765/video';
+const STATIC_VIDEO_URL = './assets/video.mp4';
+
+function getVideoSourceUrl() {
+    const select = document.getElementById('videoSourceSelect');
+    const mode = select ? select.value : 'static';
+    return mode === 'stream' ? STREAM_VIDEO_URL : STATIC_VIDEO_URL;
+}
+
 export class VideoWorld {
     constructor() {
         this.object = null;
@@ -10,18 +20,20 @@ export class VideoWorld {
         const worldGroup = new THREE.Group();
         const video = document.createElement('video');
         video.id = 'world-video';
-        video.src = './assets/video.mp4';
+        video.src = getVideoSourceUrl();
         video.crossOrigin = 'anonymous';
         video.loop = true;
-        video.muted = true; 
+        video.muted = true;
         video.playsInline = true;
-        
+        video.preload = 'auto';
+
         video.addEventListener('error', (e) => {
             const err = video.error;
-            console.error("Error loading video:", err);
+            console.error("VideoWorld: Error loading video", err?.message || err);
         });
+        video.addEventListener('loadeddata', () => console.log("VideoWorld: Video data loaded (streaming ok)"));
 
-        video.play().catch(e => console.warn("Video autoplay blocked", e));
+        video.play().catch(e => console.warn("VideoWorld: Autoplay blocked", e));
 
         const texture = new THREE.VideoTexture(video);
         texture.colorSpace = THREE.SRGBColorSpace;

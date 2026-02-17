@@ -1,0 +1,10 @@
+{
+  "name": "webxr-video-host",
+  "version": "1.0.0",
+  "description": "Stream 360 video with Range + CORS for WebXR VideoWorld",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "stream": "node server.js"
+  }
+}

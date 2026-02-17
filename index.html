@@ -167,6 +167,45 @@
             cursor: pointer;
         }
 
+        /* Video source dropdown - top center, only visible in Video world */
+        #video-source-bar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        #video-source-bar.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #video-source-bar label {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        #video-source-bar select {
+            padding: 6px 10px;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            background: rgba(255,255,255,0.95);
+            border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            min-width: 160px;
+        }
+
         button.world-btn {
             padding: 12px 24px;
             font-size: 16px;
@@ -199,6 +238,15 @@
     <!-- In-World UI (Hidden initially) -->
     <div id="world-ui">
         <button id="switchWorld" class="world-btn">Switch World</button>
+    </div>
+
+    <!-- Video source: top center (visible only in Video world) -->
+    <div id="video-source-bar">
+        <label for="videoSourceSelect">Video source</label>
+        <select id="videoSourceSelect" aria-label="Video source">
+            <option value="static">Static video</option>
+            <option value="stream">Stream video</option>
+        </select>
     </div>
 
     <!-- FPS - top left -->

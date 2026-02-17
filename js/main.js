@@ -101,6 +101,13 @@ function init() {
         });
     }
 
+    const videoSourceSelect = document.getElementById('videoSourceSelect');
+    if (videoSourceSelect) {
+        videoSourceSelect.addEventListener('change', () => {
+            if (worldManager.isCurrentWorldVideo()) worldManager.refreshCurrentWorld();
+        });
+    }
+
     // 9. Start
     worldManager.loadInitialWorld();
     renderer.setAnimationLoop(render);
