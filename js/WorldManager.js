@@ -6,6 +6,7 @@ import { FloatingShapesWorld } from './worlds/FloatingShapesWorld.js';
 import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 import { InDepthWorld } from './worlds/InDepthWorld.js';
 import { HorseWorld } from './worlds/HorseWorld.js';
+import { HandTrackingWorld } from './worlds/HandTrackingWorld.js';
 
 export class WorldManager {
     constructor(scene, renderer, camera) {
@@ -23,6 +24,7 @@ export class WorldManager {
             VideoWorld,
             CubeMapWorld,
             FloatingShapesWorld,
+            HandTrackingWorld,
             ARCubeWorld
         ];
         this.worldNames = [
@@ -32,6 +34,7 @@ export class WorldManager {
             "Video",
             "CubeMap",
             "Floating Shapes",
+            "Hand Tracking",
             "AR Cube (Hit Test)"
         ];
     }
