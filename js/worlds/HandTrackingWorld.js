@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
+// Fixed height above ground (y=0). Room is always at this world position — no AR floor.
+const ROOM_FLOOR_HEIGHT = 1.5;
+
 /**
  * Hand Tracking World: WebXR hand tracking with box primitives on each joint.
- * Virtual white tiled room (no AR passthrough). Requires optionalFeatures: ['hand-tracking'].
+ * AR disabled: solid background + room mesh at a fixed height. Requires optionalFeatures: ['hand-tracking'].
  */
 export class HandTrackingWorld {
     constructor() {
@@ -15,10 +18,12 @@ export class HandTrackingWorld {
     }
 
     enter(scene, renderer) {
-        // Virtual room: solid background (no real-world passthrough)
+        // AR fully disabled: solid background, no passthrough
         scene.background = new THREE.Color(0xf0f0f0);
 
         this.roomGroup = new THREE.Group();
+        // Fixed position: room spawns at this height above ground, never follows AR floor
+        this.roomGroup.position.set(0, ROOM_FLOOR_HEIGHT, 0);
 
         // Floor (white tiled look: plane + grid lines)
         const floorSize = 6;
