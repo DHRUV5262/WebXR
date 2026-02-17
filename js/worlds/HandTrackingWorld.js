@@ -3,8 +3,7 @@ import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 /**
  * Hand Tracking World: WebXR hand tracking with box primitives on each joint.
- * Requires optionalFeatures: ['hand-tracking'] when starting the XR session.
- * Hands appear when the device supports hand tracking (e.g. Quest).
+ * Virtual white tiled room (no AR passthrough). Requires optionalFeatures: ['hand-tracking'].
  */
 export class HandTrackingWorld {
     constructor() {
@@ -12,11 +11,66 @@ export class HandTrackingWorld {
         this.hand2 = null;
         this.handModel1 = null;
         this.handModel2 = null;
+        this.roomGroup = null;
     }
 
     enter(scene, renderer) {
-        // AR: clear background so we see the real world
-        scene.background = null;
+        // Virtual room: solid background (no real-world passthrough)
+        scene.background = new THREE.Color(0xf0f0f0);
+
+        this.roomGroup = new THREE.Group();
+
+        // Floor (white tiled look: plane + grid lines)
+        const floorSize = 6;
+        const floorGeom = new THREE.PlaneGeometry(floorSize, floorSize);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.9,
+            metalness: 0.05
+        });
+        const floor = new THREE.Mesh(floorGeom, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        this.roomGroup.add(floor);
+
+        // Grid on floor for tile lines
+        const gridHelper = new THREE.GridHelper(floorSize, 6, 0xcccccc, 0xdddddd);
+        gridHelper.position.y = 0.002;
+        this.roomGroup.add(gridHelper);
+
+        // Walls (white, same style as three.js handinput example room)
+        const wallHeight = 3;
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0xf5f5f5,
+            roughness: 0.95,
+            metalness: 0
+        });
+        const half = floorSize / 2;
+
+        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat);
+        backWall.position.set(0, wallHeight / 2, -half);
+        this.roomGroup.add(backWall);
+
+        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
+        leftWall.rotation.y = Math.PI / 2;
+        leftWall.position.set(-half, wallHeight / 2, 0);
+        this.roomGroup.add(leftWall);
+
+        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
+        rightWall.rotation.y = -Math.PI / 2;
+        rightWall.position.set(half, wallHeight / 2, 0);
+        this.roomGroup.add(rightWall);
+
+        scene.add(this.roomGroup);
+
+        // Room lights
+        const hemi = new THREE.HemisphereLight(0xffffff, 0xbbbbbb, 1.2);
+        hemi.position.set(0, 4, 0);
+        this.roomGroup.add(hemi);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(0, 4, 2);
+        dirLight.castShadow = true;
+        this.roomGroup.add(dirLight);
 
         const handModelFactory = new XRHandModelFactory();
 
@@ -45,6 +99,19 @@ export class HandTrackingWorld {
             this._disposeHandModel(this.handModel2);
             this.handModel2 = null;
             this.hand2 = null;
+        }
+        if (this.roomGroup) {
+            scene.remove(this.roomGroup);
+            this.roomGroup.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+                        else child.material.dispose();
+                    }
+                }
+            });
+            this.roomGroup = null;
         }
         scene.background = new THREE.Color(0x101010);
     }
