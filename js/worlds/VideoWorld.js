@@ -1,13 +1,26 @@
 import * as THREE from 'three';
 
-// Stream URL when user selects "Stream video" — your R2 bucket public URL (webxr-videos / panorama.mp4).
-const STREAM_VIDEO_URL = 'https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/earth.mp4';
+// R2 bucket base URL (your public development URL)
+const R2_BASE_URL = 'https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev';
+
+// Video source URLs
 const STATIC_VIDEO_URL = './assets/video.mp4';
+const STREAM_EARTH_URL = `https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/earth.mp4`;
+const STREAM_WATERFALL_URL = `https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/Shower.mp4`;
 
 function getVideoSourceUrl() {
     const select = document.getElementById('videoSourceSelect');
     const mode = select ? select.value : 'static';
-    return mode === 'stream' ? STREAM_VIDEO_URL : STATIC_VIDEO_URL;
+    
+    switch (mode) {
+        case 'stream-earth':
+            return STREAM_EARTH_URL;
+        case 'stream-waterfall':
+            return STREAM_WATERFALL_URL;
+        case 'static':
+        default:
+            return STATIC_VIDEO_URL;
+    }
 }
 
 export class VideoWorld {
