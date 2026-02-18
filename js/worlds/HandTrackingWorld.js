@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 // Fixed height above ground (y=0). Room is always at this world position — no AR floor.
-const ROOM_FLOOR_HEIGHT = 0;
+const ROOM_FLOOR_HEIGHT = -0.5;
 
 /**
  * Hand Tracking World: WebXR hand tracking with box primitives on each joint.
@@ -43,10 +43,10 @@ export class HandTrackingWorld {
         gridHelper.position.y = 0.002;
         this.roomGroup.add(gridHelper);
 
-        // Walls (white, same style as three.js handinput example room)
+        // Walls (grey, all four sides so room is fully enclosed in VR)
         const wallHeight = 3;
         const wallMat = new THREE.MeshStandardMaterial({
-            color: 0xf5f5f5,
+            color: 0x9a9a9a,
             roughness: 0.95,
             metalness: 0
         });
@@ -55,6 +55,11 @@ export class HandTrackingWorld {
         const backWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat);
         backWall.position.set(0, wallHeight / 2, -half);
         this.roomGroup.add(backWall);
+
+        const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
+        frontWall.rotation.y = Math.PI;
+        frontWall.position.set(0, wallHeight / 2, half);
+        this.roomGroup.add(frontWall);
 
         const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
         leftWall.rotation.y = Math.PI / 2;
