@@ -89,11 +89,15 @@ export class WorldManager {
         return this.currentWorld && this.currentWorld.constructor.name === 'VideoWorld';
     }
 
-    refreshCurrentWorld() {
+    isCurrentWorldHandTracking() {
+        return this.currentWorld && this.currentWorld.constructor.name === 'HandTrackingWorld';
+    }
+
+    refreshCurrentWorld(options) {
         if (!this.currentWorld) return;
         try {
             this.currentWorld.exit(this.scene);
-            this.currentWorld.enter(this.scene, this.renderer, this.camera);
+            this.currentWorld.enter(this.scene, this.renderer, this.camera, options);
         } catch (e) {
             console.error('[WorldManager] refreshCurrentWorld error:', e);
         }
@@ -139,6 +143,14 @@ export class WorldManager {
             } else {
                 videoSourceBar.classList.remove('visible');
             }
+        }
+        // XR buttons: VR only in Hand Tracking, AR in all other worlds
+        const vrBtn = document.getElementById('xr-vr-btn');
+        const arBtn = document.getElementById('xr-ar-btn');
+        if (vrBtn && arBtn) {
+            const isHandTracking = this.isCurrentWorldHandTracking();
+            vrBtn.style.display = isHandTracking ? '' : 'none';
+            arBtn.style.display = isHandTracking ? 'none' : '';
         }
     }
 }
