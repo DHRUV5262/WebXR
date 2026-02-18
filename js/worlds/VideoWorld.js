@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-// Stream URL when user selects "Stream video" in the dropdown (e.g. your video-host server or R2).
-const STREAM_VIDEO_URL = 'https://9ecc94f0eb73b39a5d9ca0b05d7a333a.r2.cloudflarestorage.com/webxr-videos/panorama.mp4';
+// Stream URL when user selects "Stream video" — your R2 bucket public URL (webxr-videos / panorama.mp4).
+const STREAM_VIDEO_URL = 'https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/panorama.mp4';
 const STATIC_VIDEO_URL = './assets/video.mp4';
 
 function getVideoSourceUrl() {
