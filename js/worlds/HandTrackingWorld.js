@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 // Fixed height above ground (y=0). Room is always at this world position — no AR floor.
-const ROOM_FLOOR_HEIGHT = 0;
+const ROOM_FLOOR_HEIGHT = -2.5;
 
 /**
  * Hand Tracking World: WebXR hand tracking with box primitives on each joint.
