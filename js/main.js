@@ -151,7 +151,15 @@ function initWorldCarousel(worldManager) {
         targetScrollY = clampScroll(targetScrollY);
     }
 
-    // Build buttons
+    const carouselAPI = {
+        setSelectedIndex(i) {
+            targetScrollY = clampScroll(firstItemCenter + i * itemHeight - viewportCenter);
+            currentScrollY = targetScrollY;
+            applyScroll();
+        }
+    };
+
+    // Build buttons — any button click switches to that world and snaps carousel
     names.forEach((name, i) => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -159,10 +167,12 @@ function initWorldCarousel(worldManager) {
         btn.textContent = name;
         btn.dataset.index = i;
         btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const idx = parseInt(e.currentTarget.dataset.index, 10);
-            if (getCenteredIndex() !== idx) return;
             worldManager.switchWorld(idx);
             worldManager.updateUI();
+            carouselAPI.setSelectedIndex(idx);
         });
         track.appendChild(btn);
     });
@@ -176,6 +186,8 @@ function initWorldCarousel(worldManager) {
 
     viewport.addEventListener('pointerdown', (e) => {
         if (!e.target.closest('.world-carousel-track')) return;
+        // Don't capture when clicking a button — let the centered button's click fire
+        if (e.target.closest('.world-carousel-btn')) return;
         isDragging = true;
         dragStartY = e.clientY;
         dragStartScroll = currentScrollY;
@@ -205,13 +217,7 @@ function initWorldCarousel(worldManager) {
     }
     requestAnimationFrame(tick);
 
-    return {
-        setSelectedIndex(i) {
-            targetScrollY = clampScroll(firstItemCenter + i * itemHeight - viewportCenter);
-            currentScrollY = targetScrollY;
-            applyScroll();
-        }
-    };
+    return carouselAPI;
 }
 
 function onSelect() {
