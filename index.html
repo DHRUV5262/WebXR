@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXR — Select World</title>
+    <title>WebXR – Video in VR</title>
     <!-- Import Google Font: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,85 +39,44 @@
             pointer-events: none;
         }
 
-        /* --- World selection carousel (landing) --- */
-        #landing-page .landing-inner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 320px;
-        }
-        #landing-page .carousel-title {
-            color: rgba(255,255,255,0.95);
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        #world-carousel-viewport {
-            width: 100%;
-            height: 280px;
-            overflow: hidden;
-            border-radius: 12px;
-            background: rgba(0,0,0,0.25);
-        }
-        #world-carousel-track {
-            width: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scroll-snap-type: y mandatory;
-            scroll-behavior: smooth;
-            padding: 0 8px;
-            box-sizing: border-box;
-        }
-        #world-carousel-track::-webkit-scrollbar {
-            width: 6px;
-        }
-        #world-carousel-track::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 3px;
-        }
-        .world-option {
-            scroll-snap-align: center;
-            scroll-snap-stop: always;
-            width: 100%;
-            min-height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 14px 20px;
-            margin: 6px 0;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.08);
-            color: rgba(255,255,255,0.6);
-            font-size: 0.95rem;
-            font-weight: 600;
-            font-family: 'Poppins', sans-serif;
-            cursor: pointer;
-            transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
-            box-sizing: border-box;
-        }
-        .world-option.center {
-            transform: scale(1.05);
-            opacity: 1;
-            background: rgba(255,255,255,0.2);
-            border-color: rgba(255,255,255,0.5);
+        #landing-page h2 {
             color: #fff;
-            pointer-events: auto;
-        }
-        .world-option:not(.center) {
-            pointer-events: none;
-            transform: scale(0.92);
-        }
-        .world-option.center:hover {
-            background: rgba(255,255,255,0.28);
-        }
-        .carousel-hint {
-            color: rgba(255,255,255,0.6);
-            font-size: 0.8rem;
-            margin-top: 12px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
             text-align: center;
+        }
+
+        #landing-world-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            max-width: 520px;
+        }
+
+        #landing-world-buttons .world-entry-btn {
+            padding: 16px 28px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transition: all 0.25s ease;
+            outline: none;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        #landing-world-buttons .world-entry-btn:hover,
+        #landing-world-buttons .world-entry-btn:focus {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.03);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         /* --- In-World UI (Initially Hidden) --- */
@@ -287,16 +246,18 @@
 </head>
 <body>
 
-    <!-- Landing Page: world selection carousel -->
+    <!-- Landing Page: choose world to start in -->
     <div id="landing-page">
-        <div class="landing-inner">
-            <h1 class="carousel-title">Select World</h1>
-            <div id="world-carousel-viewport">
-                <div id="world-carousel-track">
-                    <!-- World buttons injected by main.js -->
-                </div>
-            </div>
-            <p class="carousel-hint">Scroll to choose, then tap the highlighted world to enter</p>
+        <h2>Choose a world to start</h2>
+        <div id="landing-world-buttons">
+            <button type="button" class="world-entry-btn" data-world-index="0">Video</button>
+            <button type="button" class="world-entry-btn" data-world-index="1">Horse</button>
+            <button type="button" class="world-entry-btn" data-world-index="2">InDepth Panorama</button>
+            <button type="button" class="world-entry-btn" data-world-index="3">Panorama</button>
+            <button type="button" class="world-entry-btn" data-world-index="4">CubeMap</button>
+            <button type="button" class="world-entry-btn" data-world-index="5">Floating Shapes</button>
+            <button type="button" class="world-entry-btn" data-world-index="6">Hand Tracking</button>
+            <button type="button" class="world-entry-btn" data-world-index="7">AR Cube</button>
         </div>
     </div>
 

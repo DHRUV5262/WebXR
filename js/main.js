@@ -60,88 +60,19 @@ function init() {
         switchBtn.addEventListener('click', () => worldManager.cycleWorld());
     }
 
-    // World selection carousel (landing): build from world names, snap to center, enter on click
-    const viewport = document.getElementById('world-carousel-viewport');
-    const track = document.getElementById('world-carousel-track');
-    const WORLD_ITEM_HEIGHT = 76;
-    if (viewport && track) {
-        const names = worldManager.worldNames;
-        const vh = viewport.clientHeight || 280;
-        const padding = Math.max(0, (vh / 2) - (WORLD_ITEM_HEIGHT / 2));
-        track.style.paddingTop = padding + 'px';
-        track.style.paddingBottom = padding + 'px';
-        names.forEach((name, i) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'world-option' + (i === 0 ? ' center' : '');
-            btn.dataset.worldIndex = String(i);
-            btn.textContent = name;
-            track.appendChild(btn);
-        });
-        let scrollEndTimer = null;
-        function updateCenterFromScroll() {
-            const scrollTop = track.scrollTop;
-            const centerY = vh / 2;
-            let bestIndex = 0;
-            let bestDist = Infinity;
-            const options = track.querySelectorAll('.world-option');
-            options.forEach((el, i) => {
-                const rect = el.getBoundingClientRect();
-                const viewportRect = viewport.getBoundingClientRect();
-                const elCenter = rect.top - viewportRect.top + rect.height / 2;
-                const dist = Math.abs(elCenter - centerY);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestIndex = i;
-                }
-            });
-            options.forEach((el, i) => el.classList.toggle('center', i === bestIndex));
-        }
-        function snapToClosest() {
-            const options = track.querySelectorAll('.world-option');
-            const centerY = vh / 2;
-            let bestIndex = 0;
-            let bestDist = Infinity;
-            let bestElement = null;
-            options.forEach((el, i) => {
-                const rect = el.getBoundingClientRect();
-                const viewportRect = viewport.getBoundingClientRect();
-                const elCenter = rect.top - viewportRect.top + rect.height / 2;
-                const dist = Math.abs(elCenter - centerY);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestIndex = i;
-                    bestElement = el;
-                }
-            });
-            if (bestElement) {
-                const rect = bestElement.getBoundingClientRect();
-                const viewportRect = viewport.getBoundingClientRect();
-                const elementTopRelativeToTrack = rect.top - viewportRect.top + track.scrollTop;
-                const elementCenter = elementTopRelativeToTrack + rect.height / 2;
-                const targetScroll = elementCenter - (vh / 2);
-                track.scrollTo({ top: Math.max(0, Math.min(targetScroll, track.scrollHeight - vh)), behavior: 'smooth' });
-            }
-            options.forEach((el, i) => el.classList.toggle('center', i === bestIndex));
-        }
-        track.addEventListener('scroll', () => {
-            updateCenterFromScroll();
-            clearTimeout(scrollEndTimer);
-            scrollEndTimer = setTimeout(snapToClosest, 120);
-        });
-        track.addEventListener('click', (e) => {
-            const btn = e.target.closest('.world-option');
-            if (!btn || !btn.classList.contains('center')) return;
-            const index = parseInt(btn.dataset.worldIndex, 10);
-            worldManager.switchWorld(index);
+    // Landing page: each world button enters that world
+    document.querySelectorAll('.world-entry-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const index = parseInt(btn.getAttribute('data-world-index'), 10);
+            if (isNaN(index)) return;
             document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('canvas-container').classList.add('visible');
             document.getElementById('world-ui').classList.add('visible');
             const fpsEl = document.getElementById('fps-display');
             if (fpsEl) fpsEl.classList.add('visible');
-            worldManager.updateUI();
+            worldManager.switchWorld(index);
         });
-    }
+    });
 
     // Shape count +/- (only in Floating Shapes; step 1000)
     const shapeMinus = document.getElementById('shape-count-minus');
@@ -179,7 +110,8 @@ function init() {
         });
     }
 
-    // 9. Start (no world loaded until user picks one from landing carousel)
+    // 9. Start
+    worldManager.loadInitialWorld();
     renderer.setAnimationLoop(render);
 }
 

@@ -16,20 +16,26 @@ export class WorldManager {
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
-        // Video first for easy demo (e.g. teleoperation); order matches landing carousel
+        // Define the cycle of worlds (Video first for sharing/demo)
         this.worldClasses = [
             VideoWorld,
+            HorseWorld,
             InDepthWorld,
             PanoramaWorld,
+            CubeMapWorld,
             FloatingShapesWorld,
-            HandTrackingWorld
+            HandTrackingWorld,
+            ARCubeWorld
         ];
         this.worldNames = [
             "Video",
+            "Horse",
             "InDepth Panorama",
             "Panorama",
+            "CubeMap",
             "Floating Shapes",
-            "Hand Tracking"
+            "Hand Tracking",
+            "AR Cube (Hit Test)"
         ];
     }
 
