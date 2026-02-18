@@ -1,0 +1,20 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://dhruv5262.github.io",
+      "https://dhruv5262.github.io/"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "Range"
+    ],
+    "ExposeHeaders": [
+      "Content-Range",
+      "Accept-Ranges",
+      "Content-Length"
+    ]
+  }
+]
