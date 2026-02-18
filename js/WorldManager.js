@@ -19,23 +19,17 @@ export class WorldManager {
         // Video first for easy demo (e.g. teleoperation); order matches landing carousel
         this.worldClasses = [
             VideoWorld,
-            HorseWorld,
             InDepthWorld,
             PanoramaWorld,
-            CubeMapWorld,
             FloatingShapesWorld,
-            HandTrackingWorld,
-            ARCubeWorld
+            HandTrackingWorld
         ];
         this.worldNames = [
             "Video",
-            "Horse",
             "InDepth Panorama",
             "Panorama",
-            "CubeMap",
             "Floating Shapes",
-            "Hand Tracking",
-            "AR Cube (Hit Test)"
+            "Hand Tracking"
         ];
     }
 

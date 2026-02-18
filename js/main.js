@@ -102,6 +102,7 @@ function init() {
             const centerY = vh / 2;
             let bestIndex = 0;
             let bestDist = Infinity;
+            let bestElement = null;
             options.forEach((el, i) => {
                 const rect = el.getBoundingClientRect();
                 const viewportRect = viewport.getBoundingClientRect();
@@ -110,10 +111,17 @@ function init() {
                 if (dist < bestDist) {
                     bestDist = dist;
                     bestIndex = i;
+                    bestElement = el;
                 }
             });
-            const targetScroll = padding + bestIndex * WORLD_ITEM_HEIGHT + (WORLD_ITEM_HEIGHT / 2) - (vh / 2);
-            track.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+            if (bestElement) {
+                const rect = bestElement.getBoundingClientRect();
+                const viewportRect = viewport.getBoundingClientRect();
+                const elementTopRelativeToTrack = rect.top - viewportRect.top + track.scrollTop;
+                const elementCenter = elementTopRelativeToTrack + rect.height / 2;
+                const targetScroll = elementCenter - (vh / 2);
+                track.scrollTo({ top: Math.max(0, Math.min(targetScroll, track.scrollHeight - vh)), behavior: 'smooth' });
+            }
             options.forEach((el, i) => el.classList.toggle('center', i === bestIndex));
         }
         track.addEventListener('scroll', () => {
