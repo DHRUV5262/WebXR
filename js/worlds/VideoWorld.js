@@ -8,9 +8,11 @@ const STATIC_VIDEO_URL = './assets/video.mp4';
 const STREAM_EARTH_URL = `https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/earth.mp4`;
 const STREAM_WATERFALL_URL = `https://pub-c6b463f6a5db4393ab03e82c1f1f9c2d.r2.dev/Shower.mp4`;
 
-function getVideoSourceUrl(mode) {
-    const m = mode != null ? mode : (document.getElementById('videoSourceSelect')?.value || 'static');
-    switch (m) {
+function getVideoSourceUrl() {
+    const select = document.getElementById('videoSourceSelect');
+    const mode = select ? select.value : 'static';
+    
+    switch (mode) {
         case 'stream-earth':
             return STREAM_EARTH_URL;
         case 'stream-waterfall':
@@ -27,19 +29,16 @@ export class VideoWorld {
         this.video = null;
     }
 
-    enter(scene, _renderer, _camera, options) {
+    enter(scene) {
         const worldGroup = new THREE.Group();
         const video = document.createElement('video');
         video.id = 'world-video';
-        const sourceMode = (options && options.videoSource) || null;
-        const url = getVideoSourceUrl(sourceMode);
-        video.src = url;
+        video.src = getVideoSourceUrl();
         video.crossOrigin = 'anonymous';
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
         video.preload = 'auto';
-        video.load();
 
         video.addEventListener('error', (e) => {
             const err = video.error;
