@@ -52,15 +52,88 @@ function init() {
     // 7. World Manager
     worldManager = new WorldManager(scene, renderer, camera);
 
-    // 8. World selector: vertical snap carousel
-    const carousel = initWorldCarousel(worldManager);
-    worldManager.loadInitialWorld();
-    carousel.setSelectedIndex(0);
-    const fpsEl = document.getElementById('fps-display');
-    if (fpsEl) fpsEl.classList.add('visible');
-
-    // 9. Event Listeners
+    // 8. Event Listeners
     window.addEventListener('resize', onWindowResize);
+    
+    const switchBtn = document.getElementById('switchWorld');
+    if (switchBtn) {
+        switchBtn.addEventListener('click', () => worldManager.cycleWorld());
+    }
+
+    // World selection carousel (landing): build from world names, snap to center, enter on click
+    const viewport = document.getElementById('world-carousel-viewport');
+    const track = document.getElementById('world-carousel-track');
+    const WORLD_ITEM_HEIGHT = 76;
+    if (viewport && track) {
+        const names = worldManager.worldNames;
+        const vh = viewport.clientHeight || 280;
+        const padding = Math.max(0, (vh / 2) - (WORLD_ITEM_HEIGHT / 2));
+        track.style.paddingTop = padding + 'px';
+        track.style.paddingBottom = padding + 'px';
+        names.forEach((name, i) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'world-option' + (i === 0 ? ' center' : '');
+            btn.dataset.worldIndex = String(i);
+            btn.textContent = name;
+            track.appendChild(btn);
+        });
+        let scrollEndTimer = null;
+        function updateCenterFromScroll() {
+            const scrollTop = track.scrollTop;
+            const centerY = vh / 2;
+            let bestIndex = 0;
+            let bestDist = Infinity;
+            const options = track.querySelectorAll('.world-option');
+            options.forEach((el, i) => {
+                const rect = el.getBoundingClientRect();
+                const viewportRect = viewport.getBoundingClientRect();
+                const elCenter = rect.top - viewportRect.top + rect.height / 2;
+                const dist = Math.abs(elCenter - centerY);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            });
+            options.forEach((el, i) => el.classList.toggle('center', i === bestIndex));
+        }
+        function snapToClosest() {
+            const options = track.querySelectorAll('.world-option');
+            const centerY = vh / 2;
+            let bestIndex = 0;
+            let bestDist = Infinity;
+            options.forEach((el, i) => {
+                const rect = el.getBoundingClientRect();
+                const viewportRect = viewport.getBoundingClientRect();
+                const elCenter = rect.top - viewportRect.top + rect.height / 2;
+                const dist = Math.abs(elCenter - centerY);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            });
+            const targetScroll = padding + bestIndex * WORLD_ITEM_HEIGHT + (WORLD_ITEM_HEIGHT / 2) - (vh / 2);
+            track.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+            options.forEach((el, i) => el.classList.toggle('center', i === bestIndex));
+        }
+        track.addEventListener('scroll', () => {
+            updateCenterFromScroll();
+            clearTimeout(scrollEndTimer);
+            scrollEndTimer = setTimeout(snapToClosest, 120);
+        });
+        track.addEventListener('click', (e) => {
+            const btn = e.target.closest('.world-option');
+            if (!btn || !btn.classList.contains('center')) return;
+            const index = parseInt(btn.dataset.worldIndex, 10);
+            worldManager.switchWorld(index);
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('canvas-container').classList.add('visible');
+            document.getElementById('world-ui').classList.add('visible');
+            const fpsEl = document.getElementById('fps-display');
+            if (fpsEl) fpsEl.classList.add('visible');
+            worldManager.updateUI();
+        });
+    }
 
     // Shape count +/- (only in Floating Shapes; step 1000)
     const shapeMinus = document.getElementById('shape-count-minus');
@@ -98,126 +171,8 @@ function init() {
         });
     }
 
+    // 9. Start (no world loaded until user picks one from landing carousel)
     renderer.setAnimationLoop(render);
-}
-
-/**
- * Vertical snap carousel for world selection.
- * Only the centered button is clickable; others are dimmed. Scroll snaps to center one item.
- */
-function initWorldCarousel(worldManager) {
-    const viewport = document.getElementById('world-selector-viewport');
-    const track = document.getElementById('world-carousel-track');
-    if (!viewport || !track) return { setSelectedIndex: () => {} };
-
-    const names = worldManager.worldNames;
-    const itemHeight = 54;
-    const viewportHeight = 320;
-    const trackPadding = 12;
-    const firstItemCenter = trackPadding + 24;
-    const viewportCenter = viewportHeight / 2;
-
-    let currentScrollY = firstItemCenter - viewportCenter;
-    let targetScrollY = currentScrollY;
-    let isDragging = false;
-    let dragStartY = 0;
-    let dragStartScroll = 0;
-    let snapTimeout = null;
-
-    function clampScroll(y) {
-        const minScroll = firstItemCenter - viewportCenter;
-        const maxScroll = firstItemCenter + (names.length - 1) * itemHeight - viewportCenter;
-        return Math.max(minScroll, Math.min(maxScroll, y));
-    }
-
-    function getCenteredIndex() {
-        const centerInTrack = currentScrollY + viewportCenter;
-        const index = Math.round((centerInTrack - firstItemCenter) / itemHeight);
-        return Math.max(0, Math.min(names.length - 1, index));
-    }
-
-    function applyScroll() {
-        track.style.transform = `translateY(${-currentScrollY}px)`;
-        const centered = getCenteredIndex();
-        track.querySelectorAll('.world-carousel-btn').forEach((btn, i) => {
-            btn.classList.toggle('carousel-centered', i === centered);
-            btn.dataset.index = i;
-        });
-    }
-
-    function snapToNearest() {
-        const centered = getCenteredIndex();
-        targetScrollY = firstItemCenter + centered * itemHeight - viewportCenter;
-        targetScrollY = clampScroll(targetScrollY);
-    }
-
-    const carouselAPI = {
-        setSelectedIndex(i) {
-            targetScrollY = clampScroll(firstItemCenter + i * itemHeight - viewportCenter);
-            currentScrollY = targetScrollY;
-            applyScroll();
-        }
-    };
-
-    // Build buttons — any button click switches to that world and snaps carousel
-    names.forEach((name, i) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'world-carousel-btn' + (i === 0 ? ' carousel-centered' : '');
-        btn.textContent = name;
-        btn.dataset.index = i;
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const idx = parseInt(e.currentTarget.dataset.index, 10);
-            worldManager.switchWorld(idx);
-            worldManager.updateUI();
-            carouselAPI.setSelectedIndex(idx);
-        });
-        track.appendChild(btn);
-    });
-
-    viewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        targetScrollY = clampScroll(targetScrollY + e.deltaY);
-        clearTimeout(snapTimeout);
-        snapTimeout = setTimeout(snapToNearest, 120);
-    }, { passive: false });
-
-    viewport.addEventListener('pointerdown', (e) => {
-        if (!e.target.closest('.world-carousel-track')) return;
-        // Don't capture when clicking a button — let the centered button's click fire
-        if (e.target.closest('.world-carousel-btn')) return;
-        isDragging = true;
-        dragStartY = e.clientY;
-        dragStartScroll = currentScrollY;
-        viewport.setPointerCapture(e.pointerId);
-    });
-    viewport.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        const dy = e.clientY - dragStartY;
-        targetScrollY = clampScroll(dragStartScroll + dy);
-        clearTimeout(snapTimeout);
-    });
-    viewport.addEventListener('pointerup', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        viewport.releasePointerCapture(e.pointerId);
-        snapTimeout = setTimeout(snapToNearest, 80);
-    });
-
-    let lastT = performance.now();
-    function tick() {
-        const t = performance.now();
-        const dt = Math.min((t - lastT) / 1000, 0.1);
-        lastT = t;
-        currentScrollY += (targetScrollY - currentScrollY) * (1 - Math.exp(-12 * dt));
-        applyScroll();
-        requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-
-    return carouselAPI;
 }
 
 function onSelect() {

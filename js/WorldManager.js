@@ -16,7 +16,7 @@ export class WorldManager {
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
-        // Video first for demos (e.g. teleoperation); rest in order
+        // Video first for easy demo (e.g. teleoperation); order matches landing carousel
         this.worldClasses = [
             VideoWorld,
             HorseWorld,
