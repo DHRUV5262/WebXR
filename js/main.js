@@ -52,25 +52,15 @@ function init() {
     // 7. World Manager
     worldManager = new WorldManager(scene, renderer, camera);
 
-    // 8. Event Listeners
-    window.addEventListener('resize', onWindowResize);
-    
-    const switchBtn = document.getElementById('switchWorld');
-    if (switchBtn) {
-        switchBtn.addEventListener('click', () => worldManager.cycleWorld());
-    }
+    // 8. World selector: vertical snap carousel
+    const carousel = initWorldCarousel(worldManager);
+    worldManager.loadInitialWorld();
+    carousel.setSelectedIndex(0);
+    const fpsEl = document.getElementById('fps-display');
+    if (fpsEl) fpsEl.classList.add('visible');
 
-    const enterBtn = document.getElementById('enter-button');
-    if (enterBtn) {
-        enterBtn.addEventListener('click', () => {
-            document.getElementById('landing-page').classList.add('hidden');
-            document.getElementById('canvas-container').classList.add('visible');
-            document.getElementById('world-ui').classList.add('visible');
-            const fpsEl = document.getElementById('fps-display');
-            if (fpsEl) fpsEl.classList.add('visible');
-            worldManager.updateUI();
-        });
-    }
+    // 9. Event Listeners
+    window.addEventListener('resize', onWindowResize);
 
     // Shape count +/- (only in Floating Shapes; step 1000)
     const shapeMinus = document.getElementById('shape-count-minus');
@@ -108,9 +98,120 @@ function init() {
         });
     }
 
-    // 9. Start
-    worldManager.loadInitialWorld();
     renderer.setAnimationLoop(render);
+}
+
+/**
+ * Vertical snap carousel for world selection.
+ * Only the centered button is clickable; others are dimmed. Scroll snaps to center one item.
+ */
+function initWorldCarousel(worldManager) {
+    const viewport = document.getElementById('world-selector-viewport');
+    const track = document.getElementById('world-carousel-track');
+    if (!viewport || !track) return { setSelectedIndex: () => {} };
+
+    const names = worldManager.worldNames;
+    const itemHeight = 54;
+    const viewportHeight = 320;
+    const trackPadding = 12;
+    const firstItemCenter = trackPadding + 24;
+    const viewportCenter = viewportHeight / 2;
+
+    let currentScrollY = firstItemCenter - viewportCenter;
+    let targetScrollY = currentScrollY;
+    let isDragging = false;
+    let dragStartY = 0;
+    let dragStartScroll = 0;
+    let snapTimeout = null;
+
+    function clampScroll(y) {
+        const minScroll = firstItemCenter - viewportCenter;
+        const maxScroll = firstItemCenter + (names.length - 1) * itemHeight - viewportCenter;
+        return Math.max(minScroll, Math.min(maxScroll, y));
+    }
+
+    function getCenteredIndex() {
+        const centerInTrack = currentScrollY + viewportCenter;
+        const index = Math.round((centerInTrack - firstItemCenter) / itemHeight);
+        return Math.max(0, Math.min(names.length - 1, index));
+    }
+
+    function applyScroll() {
+        track.style.transform = `translateY(${-currentScrollY}px)`;
+        const centered = getCenteredIndex();
+        track.querySelectorAll('.world-carousel-btn').forEach((btn, i) => {
+            btn.classList.toggle('carousel-centered', i === centered);
+            btn.dataset.index = i;
+        });
+    }
+
+    function snapToNearest() {
+        const centered = getCenteredIndex();
+        targetScrollY = firstItemCenter + centered * itemHeight - viewportCenter;
+        targetScrollY = clampScroll(targetScrollY);
+    }
+
+    // Build buttons
+    names.forEach((name, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'world-carousel-btn' + (i === 0 ? ' carousel-centered' : '');
+        btn.textContent = name;
+        btn.dataset.index = i;
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.currentTarget.dataset.index, 10);
+            if (getCenteredIndex() !== idx) return;
+            worldManager.switchWorld(idx);
+            worldManager.updateUI();
+        });
+        track.appendChild(btn);
+    });
+
+    viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        targetScrollY = clampScroll(targetScrollY + e.deltaY);
+        clearTimeout(snapTimeout);
+        snapTimeout = setTimeout(snapToNearest, 120);
+    }, { passive: false });
+
+    viewport.addEventListener('pointerdown', (e) => {
+        if (!e.target.closest('.world-carousel-track')) return;
+        isDragging = true;
+        dragStartY = e.clientY;
+        dragStartScroll = currentScrollY;
+        viewport.setPointerCapture(e.pointerId);
+    });
+    viewport.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dy = e.clientY - dragStartY;
+        targetScrollY = clampScroll(dragStartScroll + dy);
+        clearTimeout(snapTimeout);
+    });
+    viewport.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        viewport.releasePointerCapture(e.pointerId);
+        snapTimeout = setTimeout(snapToNearest, 80);
+    });
+
+    let lastT = performance.now();
+    function tick() {
+        const t = performance.now();
+        const dt = Math.min((t - lastT) / 1000, 0.1);
+        lastT = t;
+        currentScrollY += (targetScrollY - currentScrollY) * (1 - Math.exp(-12 * dt));
+        applyScroll();
+        requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    return {
+        setSelectedIndex(i) {
+            targetScrollY = clampScroll(firstItemCenter + i * itemHeight - viewportCenter);
+            currentScrollY = targetScrollY;
+            applyScroll();
+        }
+    };
 }
 
 function onSelect() {

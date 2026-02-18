@@ -16,22 +16,22 @@ export class WorldManager {
         this.currentWorld = null;
         this.currentWorldIndex = 0;
         
-        // Define the cycle of worlds (Horse first so you see it as soon as you enter)
+        // Video first for demos (e.g. teleoperation); rest in order
         this.worldClasses = [
+            VideoWorld,
             HorseWorld,
             InDepthWorld,
             PanoramaWorld,
-            VideoWorld,
             CubeMapWorld,
             FloatingShapesWorld,
             HandTrackingWorld,
             ARCubeWorld
         ];
         this.worldNames = [
+            "Video",
             "Horse",
             "InDepth Panorama",
             "Panorama",
-            "Video",
             "CubeMap",
             "Floating Shapes",
             "Hand Tracking",
