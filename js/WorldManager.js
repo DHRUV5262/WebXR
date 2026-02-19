@@ -37,6 +37,23 @@ export class WorldManager {
             "Hand Tracking",
             "AR Cube (Hit Test)"
         ];
+
+        // Session type per world: 'ar' = AR (real-world passthrough), 'vr' = VR (opaque, grey/solid)
+        // Add/remove worlds above, then mirror the same length here. Change 'ar'/'vr' per index.
+        this.worldSessionTypes = [
+            'vr',  // 0 Video
+            'vr',  // 1 Horse
+            'vr',  // 2 InDepth Panorama
+            'vr',  // 3 Panorama
+            'vr',  // 4 CubeMap
+            'ar',  // 5 Floating Shapes
+            'vr',  // 6 Hand Tracking
+            'vr'   // 7 AR Cube (Hit Test)
+        ];
+    }
+
+    getSessionTypeForWorld(index) {
+        return this.worldSessionTypes[index] === 'ar' ? 'ar' : 'vr';
     }
 
     loadInitialWorld() {

@@ -3,8 +3,6 @@ import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { WorldManager } from './WorldManager.js';
 
-const HAND_TRACKING_INDEX = 6;
-
 let camera, scene, renderer;
 let worldManager;
 let controller;
@@ -77,7 +75,8 @@ function init() {
         const container = document.getElementById('xr-button-container');
         if (!container) return;
         container.innerHTML = '';
-        if (worldIndex === HAND_TRACKING_INDEX) {
+        const sessionType = worldManager.getSessionTypeForWorld(worldIndex);
+        if (sessionType === 'vr') {
             const vrBtn = VRButton.createButton(renderer, {
                 requiredFeatures: ['local-floor'],
                 optionalFeatures: ['hand-tracking']
