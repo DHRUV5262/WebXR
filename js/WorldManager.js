@@ -50,9 +50,13 @@ export class WorldManager {
             'vr',  // 6 Hand Tracking
             'vr'   // 7 AR Cube (Hit Test)
         ];
+        // Names that always use AR (used if index/config mismatch)
+        this.arWorldNames = ['Floating Shapes'];
     }
 
     getSessionTypeForWorld(index) {
+        const name = this.worldNames[index];
+        if (this.arWorldNames.includes(name)) return 'ar';
         return this.worldSessionTypes[index] === 'ar' ? 'ar' : 'vr';
     }
 
