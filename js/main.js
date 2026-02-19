@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/addons/webxr/ARButton.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { WorldManager } from './WorldManager.js';
+
+const HAND_TRACKING_INDEX = 6;
 
 let camera, scene, renderer;
 let worldManager;
@@ -32,12 +35,7 @@ function init() {
     pointerMouse = new THREE.Vector2();
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
-    // 4. Add ARButton
-    document.body.appendChild(ARButton.createButton(renderer, { 
-        requiredFeatures: ['hit-test', 'local-floor'],
-        optionalFeatures: ['dom-overlay', 'plane-detection', 'hand-tracking'], 
-        domOverlay: { root: document.body } 
-    }));
+    // 4. XR button (AR or VR) – set when user picks a world on landing page
 
     // 5. Setup Controller
     controller = renderer.xr.getController(0);
@@ -71,8 +69,29 @@ function init() {
             const fpsEl = document.getElementById('fps-display');
             if (fpsEl) fpsEl.classList.add('visible');
             worldManager.switchWorld(index);
+            setupXRButton(index);
         });
     });
+
+    function setupXRButton(worldIndex) {
+        const container = document.getElementById('xr-button-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if (worldIndex === HAND_TRACKING_INDEX) {
+            const vrBtn = VRButton.createButton(renderer, {
+                requiredFeatures: ['local-floor'],
+                optionalFeatures: ['hand-tracking']
+            });
+            container.appendChild(vrBtn);
+        } else {
+            const arBtn = ARButton.createButton(renderer, {
+                requiredFeatures: ['hit-test', 'local-floor'],
+                optionalFeatures: ['dom-overlay', 'plane-detection', 'hand-tracking'],
+                domOverlay: { root: document.body }
+            });
+            container.appendChild(arBtn);
+        }
+    }
 
     // Shape count +/- (only in Floating Shapes; step 1000)
     const shapeMinus = document.getElementById('shape-count-minus');
