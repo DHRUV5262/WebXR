@@ -3,10 +3,11 @@ import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 // Fixed height above ground (y=0). Room is always at this world position — no AR floor.
 const ROOM_FLOOR_HEIGHT = -5.5;
+const SPHERE_RADIUS = 0.05;
 
 /**
- * Hand Tracking World: WebXR hand tracking with box primitives on each joint.
- * AR disabled: solid background + room mesh at a fixed height. Requires optionalFeatures: ['hand-tracking'].
+ * Hand Tracking World: WebXR hand tracking with pinch-to-spawn (left) and pinch-to-grab (right).
+ * AR disabled: solid background + room mesh. Requires optionalFeatures: ['hand-tracking'].
  */
 export class HandTrackingWorld {
     constructor() {
@@ -15,6 +16,11 @@ export class HandTrackingWorld {
         this.handModel1 = null;
         this.handModel2 = null;
         this.roomGroup = null;
+        this.spawnGroup = null;
+        this.spheres = [];
+        this.grabbing = false;
+        this._tmpVec1 = new THREE.Vector3();
+        this._tmpVec2 = new THREE.Vector3();
     }
 
     enter(scene, renderer) {
@@ -25,11 +31,11 @@ export class HandTrackingWorld {
         // Fixed position: room spawns at this height above ground, never follows AR floor
         this.roomGroup.position.set(0, ROOM_FLOOR_HEIGHT, 0);
 
-        // Floor (white tiled look: plane + grid lines)
+        // Floor only (grey plane, no walls)
         const floorSize = 6;
         const floorGeom = new THREE.PlaneGeometry(floorSize, floorSize);
         const floorMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
+            color: 0x9a9a9a,
             roughness: 0.9,
             metalness: 0.05
         });
@@ -38,40 +44,10 @@ export class HandTrackingWorld {
         floor.receiveShadow = true;
         this.roomGroup.add(floor);
 
-        // Grid on floor for tile lines
-        const gridHelper = new THREE.GridHelper(floorSize, 6, 0xcccccc, 0xdddddd);
-        gridHelper.position.y = 0.002;
-        this.roomGroup.add(gridHelper);
-
-        // Walls (grey, all four sides so room is fully enclosed in VR)
-        const wallHeight = 3;
-        const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x9a9a9a,
-            roughness: 0.95,
-            metalness: 0
-        });
-        const half = floorSize / 2;
-
-        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat);
-        backWall.position.set(0, wallHeight / 2, -half);
-        this.roomGroup.add(backWall);
-
-        const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
-        frontWall.rotation.y = Math.PI;
-        frontWall.position.set(0, wallHeight / 2, half);
-        this.roomGroup.add(frontWall);
-
-        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
-        leftWall.rotation.y = Math.PI / 2;
-        leftWall.position.set(-half, wallHeight / 2, 0);
-        this.roomGroup.add(leftWall);
-
-        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(floorSize, wallHeight), wallMat.clone());
-        rightWall.rotation.y = -Math.PI / 2;
-        rightWall.position.set(half, wallHeight / 2, 0);
-        this.roomGroup.add(rightWall);
-
         scene.add(this.roomGroup);
+
+        this.spawnGroup = new THREE.Group();
+        scene.add(this.spawnGroup);
 
         // Room lights
         const hemi = new THREE.HemisphereLight(0xffffff, 0xbbbbbb, 1.2);
@@ -85,14 +61,73 @@ export class HandTrackingWorld {
         const handModelFactory = new XRHandModelFactory();
 
         this.hand1 = renderer.xr.getHand(0);
+        this.hand1.addEventListener('pinchstart', (e) => this._onPinchStartLeft(e));
         this.handModel1 = handModelFactory.createHandModel(this.hand1, 'boxes');
         this.hand1.add(this.handModel1);
         scene.add(this.hand1);
 
         this.hand2 = renderer.xr.getHand(1);
+        this.hand2.addEventListener('pinchstart', (e) => this._onPinchStartRight(e));
+        this.hand2.addEventListener('pinchend', () => this._onPinchEndRight());
         this.handModel2 = handModelFactory.createHandModel(this.hand2, 'boxes');
         this.hand2.add(this.handModel2);
         scene.add(this.hand2);
+    }
+
+    _onPinchStartLeft() {
+        const controller = this.hand1;
+        const indexTip = controller.joints?.['index-finger-tip'];
+        if (!indexTip) return;
+
+        const geometry = new THREE.SphereGeometry(SPHERE_RADIUS, 16, 16);
+        const material = new THREE.MeshStandardMaterial({
+            color: Math.random() * 0xffffff,
+            roughness: 1,
+            metalness: 0
+        });
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.geometry.computeBoundingSphere();
+
+        indexTip.getWorldPosition(this._tmpVec1);
+        sphere.position.copy(this._tmpVec1);
+
+        this.spheres.push(sphere);
+        this.spawnGroup.add(sphere);
+    }
+
+    _onPinchStartRight() {
+        const controller = this.hand2;
+        const indexTip = controller.joints?.['index-finger-tip'];
+        if (!indexTip) return;
+
+        const sphere = this._collideObject(indexTip);
+        if (sphere) {
+            this.grabbing = true;
+            indexTip.attach(sphere);
+            controller.userData.selected = sphere;
+        }
+    }
+
+    _onPinchEndRight() {
+        const controller = this.hand2;
+        if (controller.userData.selected) {
+            const object = controller.userData.selected;
+            this.spawnGroup.attach(object);
+            controller.userData.selected = undefined;
+            this.grabbing = false;
+        }
+    }
+
+    _collideObject(indexTip) {
+        const tipWorld = indexTip.getWorldPosition(this._tmpVec1);
+        for (let i = 0; i < this.spheres.length; i++) {
+            const sphere = this.spheres[i];
+            const sphereWorld = sphere.getWorldPosition(this._tmpVec2);
+            const dist = tipWorld.distanceTo(sphereWorld);
+            const threshold = (sphere.geometry.boundingSphere?.radius ?? SPHERE_RADIUS) * sphere.scale.x * 1.5;
+            if (dist < threshold) return sphere;
+        }
+        return null;
     }
 
     exit(scene) {
@@ -123,6 +158,17 @@ export class HandTrackingWorld {
             });
             this.roomGroup = null;
         }
+        if (this.spawnGroup) {
+            scene.remove(this.spawnGroup);
+        }
+        this.spheres.forEach((sphere) => {
+            if (sphere.parent) sphere.parent.remove(sphere);
+            if (sphere.geometry) sphere.geometry.dispose();
+            if (sphere.material) sphere.material.dispose();
+        });
+        this.spheres = [];
+        this.spawnGroup = null;
+        this.grabbing = false;
         scene.background = new THREE.Color(0x101010);
     }
 
