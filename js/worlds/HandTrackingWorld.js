@@ -19,6 +19,9 @@ export class HandTrackingWorld {
         this.spawnGroup = null;
         this.spheres = [];
         this.grabbing = false;
+        this.scaling = { active: false, initialDistance: 0, object: null, initialScale: 1 };
+        this.handLeft = null;
+        this.handRight = null;
         this._tmpVec1 = new THREE.Vector3();
         this._tmpVec2 = new THREE.Vector3();
     }
@@ -60,62 +63,80 @@ export class HandTrackingWorld {
 
         const handModelFactory = new XRHandModelFactory();
 
-        this.hand1 = renderer.xr.getHand(0);
-        this.hand1.addEventListener('pinchstart', (e) => this._onPinchStartLeft(e));
-        this.handModel1 = handModelFactory.createHandModel(this.hand1, 'boxes');
-        this.hand1.add(this.handModel1);
-        scene.add(this.hand1);
-
-        this.hand2 = renderer.xr.getHand(1);
-        this.hand2.addEventListener('pinchstart', (e) => this._onPinchStartRight(e));
-        this.hand2.addEventListener('pinchend', () => this._onPinchEndRight());
-        this.handModel2 = handModelFactory.createHandModel(this.hand2, 'boxes');
-        this.hand2.add(this.handModel2);
-        scene.add(this.hand2);
-    }
-
-    _onPinchStartLeft() {
-        const controller = this.hand1;
-        const indexTip = controller.joints?.['index-finger-tip'];
-        if (!indexTip) return;
-
-        const geometry = new THREE.SphereGeometry(SPHERE_RADIUS, 16, 16);
-        const material = new THREE.MeshStandardMaterial({
-            color: Math.random() * 0xffffff,
-            roughness: 1,
-            metalness: 0
-        });
-        const sphere = new THREE.Mesh(geometry, material);
-        sphere.geometry.computeBoundingSphere();
-
-        indexTip.getWorldPosition(this._tmpVec1);
-        sphere.position.copy(this._tmpVec1);
-
-        this.spheres.push(sphere);
-        this.spawnGroup.add(sphere);
-    }
-
-    _onPinchStartRight() {
-        const controller = this.hand2;
-        const indexTip = controller.joints?.['index-finger-tip'];
-        if (!indexTip) return;
-
-        const sphere = this._collideObject(indexTip);
-        if (sphere) {
-            this.grabbing = true;
-            indexTip.attach(sphere);
-            controller.userData.selected = sphere;
+        for (let i = 0; i < 2; i++) {
+            const hand = renderer.xr.getHand(i);
+            hand.addEventListener('connected', (e) => {
+                hand.userData.handedness = e.data?.handedness || '';
+                if (e.data?.handedness === 'left') this.handLeft = hand;
+                else if (e.data?.handedness === 'right') this.handRight = hand;
+            });
+            hand.addEventListener('pinchstart', (e) => this._onPinchStart(e));
+            hand.addEventListener('pinchend', () => this._onPinchEnd(hand));
+            const handModel = handModelFactory.createHandModel(hand, 'boxes');
+            hand.add(handModel);
+            scene.add(hand);
+            if (i === 0) { this.hand1 = hand; this.handModel1 = handModel; }
+            else { this.hand2 = hand; this.handModel2 = handModel; }
         }
     }
 
-    _onPinchEndRight() {
-        const controller = this.hand2;
-        if (controller.userData.selected) {
-            const object = controller.userData.selected;
+    _onPinchStart(e) {
+        const controller = e.target;
+        const handedness = controller.userData.handedness;
+        const indexTip = controller.joints?.['index-finger-tip'];
+        if (!indexTip) return;
+
+        if (handedness === 'left') {
+            // If right hand is holding a sphere and left pinch hits it, start scaling
+            if (this.grabbing && this.handRight) {
+                const rightSelected = this.handRight.userData?.selected;
+                const hitSphere = this._collideObject(indexTip);
+                if (rightSelected && hitSphere === rightSelected) {
+                    const tipRight = this.handRight.joints?.['index-finger-tip'];
+                    if (tipRight) {
+                        this.scaling.active = true;
+                        this.scaling.object = hitSphere;
+                        this.scaling.initialScale = hitSphere.scale.x;
+                        indexTip.getWorldPosition(this._tmpVec1);
+                        tipRight.getWorldPosition(this._tmpVec2);
+                        this.scaling.initialDistance = this._tmpVec1.distanceTo(this._tmpVec2);
+                        if (this.scaling.initialDistance < 0.001) this.scaling.initialDistance = 0.1;
+                    }
+                    return;
+                }
+            }
+            // Spawn sphere at left index tip
+            const geometry = new THREE.SphereGeometry(SPHERE_RADIUS, 16, 16);
+            const material = new THREE.MeshStandardMaterial({
+                color: Math.random() * 0xffffff,
+                roughness: 1,
+                metalness: 0
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.geometry.computeBoundingSphere();
+            indexTip.getWorldPosition(this._tmpVec1);
+            sphere.position.copy(this._tmpVec1);
+            this.spheres.push(sphere);
+            this.spawnGroup.add(sphere);
+        } else if (handedness === 'right') {
+            const sphere = this._collideObject(indexTip);
+            if (sphere) {
+                this.grabbing = true;
+                indexTip.attach(sphere);
+                controller.userData.selected = sphere;
+            }
+        }
+    }
+
+    _onPinchEnd(hand) {
+        const handedness = hand.userData.handedness;
+        if (handedness === 'right' && hand.userData.selected) {
+            const object = hand.userData.selected;
             this.spawnGroup.attach(object);
-            controller.userData.selected = undefined;
+            hand.userData.selected = undefined;
             this.grabbing = false;
         }
+        if (handedness === 'left') this.scaling.active = false;
     }
 
     _collideObject(indexTip) {
@@ -169,6 +190,7 @@ export class HandTrackingWorld {
         this.spheres = [];
         this.spawnGroup = null;
         this.grabbing = false;
+        this.scaling.active = false;
         scene.background = new THREE.Color(0x101010);
     }
 
@@ -186,6 +208,15 @@ export class HandTrackingWorld {
     }
 
     update() {
-        // Joint poses are updated by Three.js WebXRController each frame
+        if (!this.scaling.active || !this.scaling.object || !this.handLeft || !this.handRight) return;
+        const tipL = this.handLeft.joints?.['index-finger-tip'];
+        const tipR = this.handRight.joints?.['index-finger-tip'];
+        if (!tipL || !tipR || this.scaling.initialDistance <= 0) return;
+        tipL.getWorldPosition(this._tmpVec1);
+        tipR.getWorldPosition(this._tmpVec2);
+        const distance = this._tmpVec1.distanceTo(this._tmpVec2);
+        const newScale = this.scaling.initialScale * (distance / this.scaling.initialDistance);
+        const clamped = Math.max(0.1, Math.min(5, newScale));
+        this.scaling.object.scale.setScalar(clamped);
     }
 }
