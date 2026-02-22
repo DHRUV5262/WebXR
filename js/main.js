@@ -9,6 +9,10 @@ let controller;
 let pointerRaycaster;
 let pointerMouse;
 
+// WASD camera rotation (Video/Panorama, desktop only)
+const wasdKeys = { w: false, a: false, s: false, d: false };
+const WASD_ROTATION_SPEED = 1.2; // radians per second
+
 init();
 
 function init() {
@@ -124,9 +128,25 @@ function init() {
     const videoSourceSelect = document.getElementById('videoSourceSelect');
     if (videoSourceSelect) {
         videoSourceSelect.addEventListener('change', () => {
-            if (worldManager.isCurrentWorldVideo()) worldManager.refreshCurrentWorld();
+            if (worldManager.isCurrentWorldVideo()) worldManager.refreshCurrentWorld({ videoSource: videoSourceSelect.value });
         });
     }
+
+    // WASD for camera rotation in Video/Panorama (desktop only)
+    window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w') wasdKeys.w = true;
+        if (k === 'a') wasdKeys.a = true;
+        if (k === 's') wasdKeys.s = true;
+        if (k === 'd') wasdKeys.d = true;
+    });
+    window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'w') wasdKeys.w = false;
+        if (k === 'a') wasdKeys.a = false;
+        if (k === 's') wasdKeys.s = false;
+        if (k === 'd') wasdKeys.d = false;
+    });
 
     // 9. Start
     worldManager.loadInitialWorld();
@@ -155,9 +175,13 @@ function onWindowResize() {
 let lastFpsTime = 0;
 let frameCount = 0;
 let fpsValue = 0;
+let lastRenderTime = 0;
 
 function render(timestamp, frame) {
     const now = timestamp || performance.now();
+    const delta = lastRenderTime > 0 ? (now - lastRenderTime) / 1000 : 0.016;
+    lastRenderTime = now;
+
     frameCount++;
     const elapsed = now - lastFpsTime;
     if (elapsed >= 200) {
@@ -167,6 +191,17 @@ function render(timestamp, frame) {
         const fpsEl = document.getElementById('fps-display');
         if (fpsEl) fpsEl.textContent = `FPS: ${fpsValue}`;
     }
+
+    // WASD camera rotation (Video/Panorama, desktop only)
+    if (worldManager.isWASDRotationWorld() && !renderer.xr.isPresenting) {
+        const speed = WASD_ROTATION_SPEED * delta;
+        if (wasdKeys.a) camera.rotation.y += speed;
+        if (wasdKeys.d) camera.rotation.y -= speed;
+        if (wasdKeys.w) camera.rotation.x -= speed;
+        if (wasdKeys.s) camera.rotation.x += speed;
+        camera.rotation.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, camera.rotation.x));
+    }
+
     worldManager.update(timestamp, frame, camera);
     renderer.render(scene, camera);
 }

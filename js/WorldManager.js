@@ -94,6 +94,13 @@ export class WorldManager {
         }
         
         this.updateUI();
+
+        // Reset camera rotation when leaving Video/Panorama (so other worlds start upright)
+        const isNewWorldVideoOrPanorama = this.worldNames[index] === 'Video' || this.worldNames[index] === 'Panorama';
+        if (!isNewWorldVideoOrPanorama) {
+            this.camera.rotation.set(0, 0, 0);
+        }
+
         console.log(`[WorldManager] switchWorld complete`);
     }
 
@@ -110,11 +117,19 @@ export class WorldManager {
         return this.currentWorld && this.currentWorld.constructor.name === 'VideoWorld';
     }
 
-    refreshCurrentWorld() {
+    isCurrentWorldPanorama() {
+        return this.currentWorld && this.currentWorld.constructor.name === 'PanoramaWorld';
+    }
+
+    isWASDRotationWorld() {
+        return this.isCurrentWorldVideo() || this.isCurrentWorldPanorama();
+    }
+
+    refreshCurrentWorld(options) {
         if (!this.currentWorld) return;
         try {
             this.currentWorld.exit(this.scene);
-            this.currentWorld.enter(this.scene, this.renderer, this.camera);
+            this.currentWorld.enter(this.scene, this.renderer, this.camera, options);
         } catch (e) {
             console.error('[WorldManager] refreshCurrentWorld error:', e);
         }
