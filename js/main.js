@@ -192,14 +192,11 @@ function render(timestamp, frame) {
         if (fpsEl) fpsEl.textContent = `FPS: ${fpsValue}`;
     }
 
-    // WASD camera rotation (Video/Panorama, desktop only)
+    // A/D camera rotation left/right (Video/Panorama, desktop only)
     if (worldManager.isWASDRotationWorld() && !renderer.xr.isPresenting) {
         const speed = WASD_ROTATION_SPEED * delta;
         if (wasdKeys.a) camera.rotation.y += speed;
         if (wasdKeys.d) camera.rotation.y -= speed;
-        if (wasdKeys.w) camera.rotation.x -= speed;
-        if (wasdKeys.s) camera.rotation.x += speed;
-        camera.rotation.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, camera.rotation.x));
     }
 
     worldManager.update(timestamp, frame, camera);
