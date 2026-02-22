@@ -25,10 +25,10 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            /* Stylish Gradient Background */
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); /* Fallback */
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Deep Teal/Blue */
             z-index: 9999;
             transition: opacity 1s ease-in-out;
@@ -41,18 +41,28 @@
 
         #landing-page h2 {
             color: #fff;
-            font-size: 1.5rem;
+            font-size: 2.5rem;
             font-weight: 600;
-            margin-bottom: 24px;
+            margin-bottom: 8px;
             text-align: center;
+        }
+
+        /* Wrapper to ensure the buttons grid stays centered under the title */
+        .landing-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px;
+            padding: 0 20px;
         }
 
         #landing-world-buttons {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 12px;
-            max-width: 520px;
+            gap: 16px;
+            max-width: 700px;
+            margin-top: 20px;
         }
 
         #landing-world-buttons .world-entry-btn {
@@ -69,6 +79,7 @@
             transition: all 0.25s ease;
             outline: none;
             font-family: 'Poppins', sans-serif;
+            min-width: 200px;
         }
 
         #landing-world-buttons .world-entry-btn:hover,
@@ -259,19 +270,21 @@
 
     <!-- Landing Page: choose world to start in -->
     <div id="landing-page">
-        <h2>WebXR & WebGL Graphics Demos</h2>
-        <p style="color: rgba(255,255,255,0.6); font-size: 0.85rem; text-align: center; margin-top: -16px; margin-bottom: 24px; font-family: 'Poppins', sans-serif;">
-            Built with WebXR API · WebGL · Three.js · Instanced Rendering
-        </p>
-        <div id="landing-world-buttons">
-            <button type="button" class="world-entry-btn" data-world-index="0">🎬 Video in VR <span class="btn-tag">360° Projection</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="1">🐴 Horse <span class="btn-tag">3D Scene</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="2">🌅 InDepth Panorama <span class="btn-tag">Custom Shaders</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="3">🌐 Panorama <span class="btn-tag">Equirectangular Mapping</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="4">📦 CubeMap <span class="btn-tag">Skybox Rendering</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="5">⚡ Floating Shapes <span class="btn-tag">Instanced Rendering</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="6">🖐 Hand Tracking <span class="btn-tag">WebXR Input API</span></button>
-            <button type="button" class="world-entry-btn" data-world-index="7">🔲 AR Cube <span class="btn-tag">WebXR Hit Testing</span></button>
+        <div class="landing-content">
+            <h2>WebXR & WebGL Graphics Demos</h2>
+            <p style="color: rgba(255,255,255,0.7); font-size: 0.95rem; text-align: center; margin-bottom: 30px; font-family: 'Poppins', sans-serif;">
+                Built with WebXR API · WebGL · Three.js · Instanced Rendering
+            </p>
+            <div id="landing-world-buttons">
+                <button type="button" class="world-entry-btn" data-world-index="0">🎬 Video in VR <span class="btn-tag">360° Projection</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="1">🐴 Horse <span class="btn-tag">3D Scene</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="2">🌅 InDepth Panorama <span class="btn-tag">Custom Shaders</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="3">🌐 Panorama <span class="btn-tag">Equirectangular Mapping</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="4">📦 CubeMap <span class="btn-tag">Skybox Rendering</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="5">⚡ Floating Shapes <span class="btn-tag">Instanced Rendering</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="6">🖐 Hand Tracking <span class="btn-tag">WebXR Input API</span></button>
+                <button type="button" class="world-entry-btn" data-world-index="7">🔲 AR Cube <span class="btn-tag">WebXR Hit Testing</span></button>
+            </div>
         </div>
     </div>
 
