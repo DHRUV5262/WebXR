@@ -1,12 +1,11 @@
 import { PanoramaWorld } from './worlds/PanoramaWorld.js';
 import { VideoWorld } from './worlds/VideoWorld.js';
-import { CubeMapWorld } from './worlds/CubeMapWorld.js';
-import { ARCubeWorld } from './worlds/ARCubeWorld.js';
 import { FloatingShapesWorld } from './worlds/FloatingShapesWorld.js';
 import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 import { InDepthWorld } from './worlds/InDepthWorld.js';
 import { HorseWorld } from './worlds/HorseWorld.js';
 import { HandTrackingWorld } from './worlds/HandTrackingWorld.js';
+import { IKArmWorld } from './worlds/IKArmWorld.js';
 
 export class WorldManager {
     constructor(scene, renderer, camera) {
@@ -22,33 +21,29 @@ export class WorldManager {
             HorseWorld,
             InDepthWorld,
             PanoramaWorld,
-            CubeMapWorld,
             FloatingShapesWorld,
             HandTrackingWorld,
-            ARCubeWorld
+            IKArmWorld
         ];
         this.worldNames = [
             "Video",
             "Horse",
             "InDepth Panorama",
             "Panorama",
-            "CubeMap",
             "Floating Shapes",
             "Hand Tracking",
-            "AR Cube (Hit Test)"
+            "IK Arm Reach"
         ];
 
         // Session type per world: 'ar' = AR (real-world passthrough), 'vr' = VR (opaque, grey/solid)
-        // Add/remove worlds above, then mirror the same length here. Change 'ar'/'vr' per index.
         this.worldSessionTypes = [
             'vr',  // 0 Video
             'vr',  // 1 Horse
             'vr',  // 2 InDepth Panorama
             'vr',  // 3 Panorama
-            'vr',  // 4 CubeMap
-            'ar',  // 5 Floating Shapes
-            'vr',  // 6 Hand Tracking
-            'vr'   // 7 AR Cube (Hit Test)
+            'ar',  // 4 Floating Shapes
+            'vr',  // 5 Hand Tracking
+            'vr'   // 6 IK Arm Reach
         ];
         // Names that always use AR (used if index/config mismatch)
         this.arWorldNames = ['Floating Shapes'];
@@ -156,9 +151,7 @@ export class WorldManager {
     updateUI() {
         const btn = document.getElementById('switchWorld');
         if (btn) {
-            if (this.worldNames[this.currentWorldIndex] !== "AR Cube (Hit Test)") {
-                btn.textContent = `Switch World (Current: ${this.worldNames[this.currentWorldIndex]})`;
-            }
+            btn.textContent = `Switch World (Current: ${this.worldNames[this.currentWorldIndex]})`;
         }
         const shapeBar = document.getElementById('shape-count-bar');
         if (shapeBar) {
