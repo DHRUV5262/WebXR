@@ -8,7 +8,7 @@ import * as THREE from 'three';
  * Hierarchy: base → link1 → link2 → link3 → link4
  * White spheres mark each joint/attachment point between links.
  */
-const ARM_Z = -2;           // Distance in front of camera
+const ARM_Z = -0.8;        // Arm in front of camera (desktop-friendly)
 const JOINT_SPHERE_RADIUS = 0.06;
 const GROUND_SIZE = 8;
 
@@ -144,9 +144,9 @@ export class IKArmWorld {
         dirLight.position.set(2, 4, 2);
         this.armGroup.add(dirLight);
 
-        // Position camera to view arm
-        camera.position.set(0, 1.6, 2);
-        camera.lookAt(0, 0.8, ARM_Z);
+        // Position camera to view arm (desktop: close, centered)
+        camera.position.set(0, 1.0, 1.2);
+        camera.lookAt(0, 0.6, ARM_Z);
     }
 
     exit(scene) {
