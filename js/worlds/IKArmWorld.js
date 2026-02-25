@@ -14,6 +14,8 @@ const GROUND_SIZE = 8;
 const TARGET_SPHERE_RADIUS = 0.08;
 const CCD_ITERATIONS = 4;
 const CCD_MAX_ANGLE = Math.PI / 2;  // ±90° clamp
+const ORBIT_RADIUS = 1.8;
+const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
 
 // Link dimensions [width, height, depth] – height is along local Y (extend direction)
 const BASE_SIZE = [0.5, 0.3, 0.5];   // base (wider, shorter)
@@ -64,6 +66,14 @@ export class IKArmWorld {
         this._desiredDir = new THREE.Vector3();
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
+
+        // Orbit camera around arm (A = left, D = right, desktop only)
+        this.orbitAngle = 0;
+        this.orbitCenter = new THREE.Vector3(0, 0.6, ARM_Z);
+        this.orbitKeys = { a: false, d: false };
+        this.boundKeyDown = null;
+        this.boundKeyUp = null;
+        this._lastUpdateTime = 0;
     }
 
     enter(scene, renderer, camera) {
@@ -217,9 +227,27 @@ export class IKArmWorld {
         this.debugOverlay.style.cssText = 'position:fixed;top:12px;left:12px;z-index:102;color:#fff;font-family:Poppins,sans-serif;font-size:13px;background:rgba(0,0,0,0.6);padding:8px 12px;border-radius:6px;pointer-events:none;';
         this.debugOverlay.textContent = 'EE: (—, —, —)  dist: —';
         document.body.appendChild(this.debugOverlay);
+
+        // A/D orbit around arm (desktop)
+        this.boundKeyDown = (e) => {
+            const k = e.code;
+            if (k === 'KeyA') this.orbitKeys.a = true;
+            if (k === 'KeyD') this.orbitKeys.d = true;
+        };
+        this.boundKeyUp = (e) => {
+            const k = e.code;
+            if (k === 'KeyA') this.orbitKeys.a = false;
+            if (k === 'KeyD') this.orbitKeys.d = false;
+        };
+        window.addEventListener('keydown', this.boundKeyDown);
+        window.addEventListener('keyup', this.boundKeyUp);
     }
 
     exit(scene) {
+        window.removeEventListener('keydown', this.boundKeyDown);
+        window.removeEventListener('keyup', this.boundKeyUp);
+        this.boundKeyDown = null;
+        this.boundKeyUp = null;
         if (this.boundPointerMove && this.rendererDomElement) {
             this.rendererDomElement.removeEventListener('pointermove', this.boundPointerMove);
             this.boundPointerMove = null;
@@ -274,6 +302,20 @@ export class IKArmWorld {
      */
     update(time, frame, renderer, scene, camera) {
         if (!this.armGroup || !this.link4 || !this.endEffectorTip) return;
+
+        const now = time || performance.now();
+        const dt = this._lastUpdateTime > 0 ? (now - this._lastUpdateTime) / 1000 : 0.016;
+        this._lastUpdateTime = now;
+
+        // --- Orbit camera around arm (A = left, D = right, desktop only) ---
+        if (!renderer.xr.isPresenting) {
+            if (this.orbitKeys.a) this.orbitAngle += ORBIT_SPEED * dt;
+            if (this.orbitKeys.d) this.orbitAngle -= ORBIT_SPEED * dt;
+            camera.position.x = this.orbitCenter.x + ORBIT_RADIUS * Math.sin(this.orbitAngle);
+            camera.position.y = this.orbitCenter.y;
+            camera.position.z = this.orbitCenter.z + ORBIT_RADIUS * Math.cos(this.orbitAngle);
+            camera.lookAt(this.orbitCenter);
+        }
 
         // --- Target position: desktop = mouse on vertical plane; WebXR = right controller ---
         if (renderer.xr.isPresenting && this.rightController) {
