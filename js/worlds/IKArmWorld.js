@@ -14,6 +14,8 @@ const GROUND_SIZE = 8;
 const TARGET_SPHERE_RADIUS = 0.08;
 const CCD_ITERATIONS = 4;
 const CCD_MAX_ANGLE = Math.PI / 2;  // ±90° clamp
+const CCD_DAMPING = 0.45;           // Scale per-step rotation to reduce jitter/overshoot
+const TARGET_SMOOTH = 0.18;         // Lerp factor for target (0=no move, 1=instant)
 const ORBIT_RADIUS = 1.8;
 const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
 
@@ -51,6 +53,7 @@ export class IKArmWorld {
         this.raycaster = new THREE.Raycaster();
         this.ikPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -ARM_Z);
         this.ikPlaneIntersect = new THREE.Vector3();
+        this._targetDesired = new THREE.Vector3(0, 1.0, ARM_Z);  // Raw target before smoothing
         this.boundPointerMove = null;
 
         // WebXR: right controller
@@ -319,13 +322,14 @@ export class IKArmWorld {
 
         // --- Target position: desktop = mouse on vertical plane; WebXR = right controller ---
         if (renderer.xr.isPresenting && this.rightController) {
-            this.rightController.getWorldPosition(this.targetPosition);
+            this.rightController.getWorldPosition(this._targetDesired);
         } else {
             this.raycaster.setFromCamera(this.pointer, camera);
             if (this.raycaster.ray.intersectPlane(this.ikPlane, this.ikPlaneIntersect)) {
-                this.targetPosition.copy(this.ikPlaneIntersect);
+                this._targetDesired.copy(this.ikPlaneIntersect);
             }
         }
+        this.targetPosition.lerp(this._targetDesired, TARGET_SMOOTH);
         this.targetSphere.position.copy(this.targetPosition);
 
         // --- CCD IK (end-effector back to base) ---
@@ -348,9 +352,9 @@ export class IKArmWorld {
 
                 this._deltaQ.setFromUnitVectors(this._currentDir, this._desiredDir);
 
-                // Clamp rotation to ±90°
+                // Clamp rotation to ±90° and damp to reduce jitter
                 const angle = 2 * Math.acos(Math.min(1, Math.abs(this._deltaQ.w)));
-                const clampAngle = Math.min(angle, CCD_MAX_ANGLE);
+                const clampAngle = Math.min(angle, CCD_MAX_ANGLE) * CCD_DAMPING;
                 if (clampAngle < 1e-6) continue;
                 this._axis.set(this._deltaQ.x, this._deltaQ.y, this._deltaQ.z);
                 const axisLen = this._axis.length();
