@@ -124,7 +124,7 @@ export class IKArmWorld {
         this.armGroup.add(footPlate);
 
         // Part 2 — rotating waist (IK base joint)
-        const baseGeom = new THREE.CylinderGeometry(0.25, 0.35, 0.4, 32);
+        const baseGeom = new THREE.SphereGeometry(0.28, 32, 24);
         const baseMat = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.35,
