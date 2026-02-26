@@ -103,16 +103,25 @@ export class IKArmWorld {
         this.ground.receiveShadow = true;
         scene.add(this.ground);
 
-        // Joint sphere geometry (shared) and material
-        const jointGeom = new THREE.SphereGeometry(JOINT_SPHERE_RADIUS, 16, 16);
-        const jointMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        // Joint sphere geometry (shared) and material – servo knuckles
+        const jointGeom = new THREE.SphereGeometry(JOINT_SPHERE_RADIUS * 1.2, 24, 24);
+        const jointMat = new THREE.MeshStandardMaterial({
+            color: 0x00aaff,
+            roughness: 0.4,
+            metalness: 0.7
+        });
 
-        // Base (cube)
-        const baseGeom = new THREE.BoxGeometry(BASE_SIZE[0], BASE_SIZE[1], BASE_SIZE[2]);
+        // Base – industrial pedestal
+        const baseGeom = new THREE.CylinderGeometry(
+            BASE_SIZE[0] * 0.9,
+            BASE_SIZE[0] * 1.1,
+            BASE_SIZE[1],
+            32
+        );
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x4a4a6a,
-            roughness: 0.6,
-            metalness: 0.2
+            color: 0x2a2a2a,
+            roughness: 0.4,
+            metalness: 0.7
         });
         this.base = new THREE.Mesh(baseGeom, baseMat);
         this.base.position.y = 0;
@@ -124,44 +133,77 @@ export class IKArmWorld {
         this.armGroup.add(joint0);
         this.jointSpheres.push(joint0);
 
-        // Link 1
-        const link1Geom = new THREE.BoxGeometry(LINK1_SIZE[0], LINK1_SIZE[1], LINK1_SIZE[2]);
+        // Link 1 – lower arm cylinder + joint collar
+        const link1Geom = new THREE.CylinderGeometry(
+            LINK1_SIZE[0] * 0.6,
+            LINK1_SIZE[0] * 0.6,
+            LINK1_SIZE[1],
+            32
+        );
         const link1Mat = new THREE.MeshStandardMaterial({
-            color: 0x5a5a8a,
-            roughness: 0.6,
-            metalness: 0.2
+            color: 0x3d3d3d,
+            roughness: 0.4,
+            metalness: 0.7
         });
         this.link1 = new THREE.Mesh(link1Geom, link1Mat);
         this.link1.position.y = BASE_SIZE[1] / 2 + LINK1_SIZE[1] / 2;
         this.armGroup.add(this.link1);
+
+        // Collar at top of link1
+        const collar1Geom = new THREE.TorusGeometry(LINK1_SIZE[0] * 0.7, LINK1_SIZE[0] * 0.15, 12, 24);
+        const collarMat = new THREE.MeshStandardMaterial({
+            color: 0x3d3d3d,
+            roughness: 0.4,
+            metalness: 0.7
+        });
+        const collar1 = new THREE.Mesh(collar1Geom, collarMat);
+        collar1.rotation.x = Math.PI / 2;
+        collar1.position.y = LINK1_SIZE[1] / 2;
+        this.link1.add(collar1);
 
         const joint1 = new THREE.Mesh(jointGeom, jointMat.clone());
         joint1.position.y = LINK1_SIZE[1] / 2;
         this.link1.add(joint1);
         this.jointSpheres.push(joint1);
 
-        // Link 2
-        const link2Geom = new THREE.BoxGeometry(LINK2_SIZE[0], LINK2_SIZE[1], LINK2_SIZE[2]);
+        // Link 2 – mid arm cylinder + joint collar
+        const link2Geom = new THREE.CylinderGeometry(
+            LINK2_SIZE[0] * 0.6,
+            LINK2_SIZE[0] * 0.6,
+            LINK2_SIZE[1],
+            32
+        );
         const link2Mat = new THREE.MeshStandardMaterial({
-            color: 0x6a6a9a,
-            roughness: 0.6,
-            metalness: 0.2
+            color: 0x3d3d3d,
+            roughness: 0.4,
+            metalness: 0.7
         });
         this.link2 = new THREE.Mesh(link2Geom, link2Mat);
         this.link2.position.y = LINK1_SIZE[1] / 2 + LINK2_SIZE[1] / 2;
         this.link1.add(this.link2);
+
+        const collar2Geom = new THREE.TorusGeometry(LINK2_SIZE[0] * 0.7, LINK2_SIZE[0] * 0.15, 12, 24);
+        const collar2 = new THREE.Mesh(collar2Geom, collarMat.clone());
+        collar2.rotation.x = Math.PI / 2;
+        collar2.position.y = LINK2_SIZE[1] / 2;
+        this.link2.add(collar2);
 
         const joint2 = new THREE.Mesh(jointGeom, jointMat.clone());
         joint2.position.y = LINK2_SIZE[1] / 2;
         this.link2.add(joint2);
         this.jointSpheres.push(joint2);
 
-        // Link 3
-        const link3Geom = new THREE.BoxGeometry(LINK3_SIZE[0], LINK3_SIZE[1], LINK3_SIZE[2]);
+        // Link 3 – upper arm cylinder
+        const link3Geom = new THREE.CylinderGeometry(
+            LINK3_SIZE[0] * 0.55,
+            LINK3_SIZE[0] * 0.55,
+            LINK3_SIZE[1],
+            32
+        );
         const link3Mat = new THREE.MeshStandardMaterial({
-            color: 0x7a7aaa,
-            roughness: 0.6,
-            metalness: 0.2
+            color: 0x3d3d3d,
+            roughness: 0.4,
+            metalness: 0.7
         });
         this.link3 = new THREE.Mesh(link3Geom, link3Mat);
         this.link3.position.y = LINK2_SIZE[1] / 2 + LINK3_SIZE[1] / 2;
@@ -172,22 +214,33 @@ export class IKArmWorld {
         this.link3.add(joint3);
         this.jointSpheres.push(joint3);
 
-        // Link 4 (end-effector)
-        const link4Geom = new THREE.BoxGeometry(LINK4_SIZE[0], LINK4_SIZE[1], LINK4_SIZE[2]);
+        // Link 4 (end-effector segment)
+        const link4Geom = new THREE.CylinderGeometry(
+            LINK4_SIZE[0] * 0.5,
+            LINK4_SIZE[0] * 0.5,
+            LINK4_SIZE[1],
+            32
+        );
         const link4Mat = new THREE.MeshStandardMaterial({
-            color: 0x8a8aba,
-            roughness: 0.6,
-            metalness: 0.2
+            color: 0x3d3d3d,
+            roughness: 0.4,
+            metalness: 0.7
         });
         this.link4 = new THREE.Mesh(link4Geom, link4Mat);
         this.link4.position.y = LINK3_SIZE[1] / 2 + LINK4_SIZE[1] / 2;
         this.link4.userData.isEndEffector = true; // For later IK/controller target
         this.link3.add(this.link4);
 
-        const joint4 = new THREE.Mesh(jointGeom, jointMat.clone());
-        joint4.position.y = LINK4_SIZE[1] / 2;
-        this.link4.add(joint4);
-        this.jointSpheres.push(joint4);
+        // Tool / gripper tip – small cone at former end-effector sphere position
+        const tipGeom = new THREE.ConeGeometry(LINK4_SIZE[0] * 0.7, LINK4_SIZE[1] * 0.6, 24);
+        const tipMat = new THREE.MeshStandardMaterial({
+            color: 0xe86c1a,
+            roughness: 0.4,
+            metalness: 0.7
+        });
+        const tip = new THREE.Mesh(tipGeom, tipMat);
+        tip.position.y = LINK4_SIZE[1] / 2;
+        this.link4.add(tip);
 
         // Lights (added to armGroup so they are removed on exit)
         const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
@@ -195,6 +248,11 @@ export class IKArmWorld {
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight.position.set(2, 4, 2);
         this.armGroup.add(dirLight);
+
+        // Extra point light near the arm to show metallic highlights
+        const pointLight = new THREE.PointLight(0xffffff, 1.2, 6);
+        pointLight.position.set(1.0, 1.5, ARM_Z + 0.3);
+        this.armGroup.add(pointLight);
 
         // Position camera to view arm (desktop: close, centered)
         camera.position.set(0, 1.0, 1.2);
