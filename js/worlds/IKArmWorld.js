@@ -321,26 +321,30 @@ export class IKArmWorld {
         this.rightController = renderer.xr.getController(1);
         scene.add(this.rightController);
 
-        // Debug overlay (top-right)
+        // Debug overlay + Reset button container (top-right, stacked)
+        this.ikArmUI = document.createElement('div');
+        this.ikArmUI.style.cssText =
+            'position:fixed;top:12px;right:12px;z-index:102;display:flex;flex-direction:column;align-items:flex-end;gap:6px;';
+        document.body.appendChild(this.ikArmUI);
+
         this.debugOverlay = document.createElement('div');
         this.debugOverlay.id = 'ik-arm-debug';
         this.debugOverlay.style.cssText =
-            'position:fixed;top:12px;right:12px;z-index:102;color:#fff;font-family:Poppins,sans-serif;font-size:13px;background:rgba(0,0,0,0.6);padding:8px 12px;border-radius:6px;pointer-events:none;';
+            'color:#fff;font-family:Poppins,sans-serif;font-size:13px;background:rgba(0,0,0,0.6);padding:8px 12px;border-radius:6px;pointer-events:none;';
         this.debugOverlay.textContent = 'EE: (—, —, —)  dist: —';
-        document.body.appendChild(this.debugOverlay);
+        this.ikArmUI.appendChild(this.debugOverlay);
 
-        // Reset target button (top-right, next to debug)
         this.resetButton = document.createElement('button');
         this.resetButton.textContent = 'Reset Target';
         this.resetButton.style.cssText =
-            'position:fixed;top:12px;right:12px;transform:translateX(-140px);z-index:103;padding:6px 10px;font-size:12px;font-family:Poppins,sans-serif;border-radius:4px;border:none;cursor:pointer;background:#ff6600;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);';
+            'padding:6px 10px;font-size:12px;font-family:Poppins,sans-serif;border-radius:4px;border:none;cursor:pointer;background:#ff6600;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);';
         this.resetButton.onclick = () => {
             // Reset target back to default position in front of arm
             this.targetPosition.set(0, 1.0, ARM_Z);
             this._targetDesired.copy(this.targetPosition);
             this.targetSphere.position.copy(this.targetPosition);
         };
-        document.body.appendChild(this.resetButton);
+        this.ikArmUI.appendChild(this.resetButton);
 
         // A/D orbit around arm (desktop)
         this.boundKeyDown = (e) => {
@@ -377,8 +381,10 @@ export class IKArmWorld {
             if (this.transformControls.dispose) this.transformControls.dispose();
             this.transformControls = null;
         }
-        if (this.resetButton && this.resetButton.parentNode) {
-            this.resetButton.parentNode.removeChild(this.resetButton);
+        if (this.ikArmUI && this.ikArmUI.parentNode) {
+            this.ikArmUI.parentNode.removeChild(this.ikArmUI);
+            this.ikArmUI = null;
+            this.debugOverlay = null;
             this.resetButton = null;
         }
         if (this.targetSphere) {
@@ -386,10 +392,6 @@ export class IKArmWorld {
             this.targetSphere.geometry.dispose();
             this.targetSphere.material.dispose();
             this.targetSphere = null;
-        }
-        if (this.debugOverlay && this.debugOverlay.parentNode) {
-            this.debugOverlay.parentNode.removeChild(this.debugOverlay);
-            this.debugOverlay = null;
         }
         if (this.armGroup) {
             scene.remove(this.armGroup);
@@ -494,5 +496,4 @@ export class IKArmWorld {
         const d = dist.toFixed(2);
         this.debugOverlay.textContent = `EE: (${x}, ${y}, ${z})  dist: ${d}`;
     }
-    
 }
