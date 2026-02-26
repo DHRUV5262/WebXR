@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 /**
  * IKArmWorld: A 4-link robotic arm made from cubes with visible joint spheres.
@@ -77,6 +78,9 @@ export class IKArmWorld {
         this.boundKeyDown = null;
         this.boundKeyUp = null;
         this._lastUpdateTime = 0;
+
+        // Transform gizmo for dragging the IK target along XYZ axes (desktop)
+        this.transformControls = null;
     }
 
     enter(scene, renderer, camera) {
@@ -202,6 +206,21 @@ export class IKArmWorld {
         this.targetSphere.position.copy(this.targetPosition);
         scene.add(this.targetSphere);
 
+        // TransformControls gizmo for desktop axis dragging
+        this.transformControls = new TransformControls(camera, renderer.domElement);
+        this.transformControls.setMode('translate');
+        this.transformControls.size = 0.75;
+        this.transformControls.attach(this.targetSphere);
+        scene.add(this.transformControls);
+
+        this.transformControls.addEventListener('dragging-changed', (event) => {
+            const dragging = event.value;
+            if (dragging) {
+                this.orbitKeys.a = false;
+                this.orbitKeys.d = false;
+            }
+        });
+
         // End-effector tip helper (for CCD: world position of link4 tip)
         this.endEffectorTip = new THREE.Object3D();
         this.endEffectorTip.position.set(0, LINK4_SIZE[1] / 2, 0);
@@ -259,6 +278,11 @@ export class IKArmWorld {
         if (this.rightController && this.rightController.parent) {
             scene.remove(this.rightController);
             this.rightController = null;
+        }
+        if (this.transformControls) {
+            scene.remove(this.transformControls);
+            if (this.transformControls.dispose) this.transformControls.dispose();
+            this.transformControls = null;
         }
         if (this.targetSphere) {
             scene.remove(this.targetSphere);
@@ -320,17 +344,13 @@ export class IKArmWorld {
             camera.lookAt(this.orbitCenter);
         }
 
-        // --- Target position: desktop = mouse on vertical plane; WebXR = right controller ---
+        // --- Target position source ---
+        // Desktop: TransformControls moves targetSphere directly.
+        // WebXR: right controller drives targetSphere in world space.
         if (renderer.xr.isPresenting && this.rightController) {
-            this.rightController.getWorldPosition(this._targetDesired);
-        } else {
-            this.raycaster.setFromCamera(this.pointer, camera);
-            if (this.raycaster.ray.intersectPlane(this.ikPlane, this.ikPlaneIntersect)) {
-                this._targetDesired.copy(this.ikPlaneIntersect);
-            }
+            this.rightController.getWorldPosition(this.targetSphere.position);
         }
-        this.targetPosition.lerp(this._targetDesired, TARGET_SMOOTH);
-        this.targetSphere.position.copy(this.targetPosition);
+        this.targetPosition.copy(this.targetSphere.position);
 
         // --- CCD IK (end-effector back to base) ---
         for (let iter = 0; iter < CCD_ITERATIONS; iter++) {
