@@ -494,4 +494,5 @@ export class IKArmWorld {
         const d = dist.toFixed(2);
         this.debugOverlay.textContent = `EE: (${x}, ${y}, ${z})  dist: ${d}`;
     }
+    
 }
