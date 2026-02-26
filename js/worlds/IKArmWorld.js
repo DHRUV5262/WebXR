@@ -81,6 +81,7 @@ export class IKArmWorld {
 
         // Transform gizmo for dragging the IK target along XYZ axes (desktop)
         this.transformControls = null;
+        this.isDraggingGizmo = false;
     }
 
     enter(scene, renderer, camera) {
@@ -215,6 +216,7 @@ export class IKArmWorld {
 
         this.transformControls.addEventListener('dragging-changed', (event) => {
             const dragging = event.value;
+            this.isDraggingGizmo = dragging;
             if (dragging) {
                 this.orbitKeys.a = false;
                 this.orbitKeys.d = false;
@@ -253,6 +255,7 @@ export class IKArmWorld {
         // A/D orbit around arm (desktop)
         this.boundKeyDown = (e) => {
             const k = e.code;
+            if (this.isDraggingGizmo) return;
             if (k === 'KeyA') this.orbitKeys.a = true;
             if (k === 'KeyD') this.orbitKeys.d = true;
         };
@@ -335,9 +338,10 @@ export class IKArmWorld {
         this._lastUpdateTime = now;
 
         // --- Orbit camera around arm (A = left, D = right, desktop only) ---
-        if (!renderer.xr.isPresenting) {
-            if (this.orbitKeys.a) this.orbitAngle += ORBIT_SPEED * dt;
-            if (this.orbitKeys.d) this.orbitAngle -= ORBIT_SPEED * dt;
+        if (!renderer.xr.isPresenting && !this.isDraggingGizmo) {
+            // D = rotate right, A = rotate left (from viewer perspective)
+            if (this.orbitKeys.a) this.orbitAngle -= ORBIT_SPEED * dt;
+            if (this.orbitKeys.d) this.orbitAngle += ORBIT_SPEED * dt;
             camera.position.x = this.orbitCenter.x + ORBIT_RADIUS * Math.sin(this.orbitAngle);
             camera.position.y = this.orbitCenter.y;
             camera.position.z = this.orbitCenter.z + ORBIT_RADIUS * Math.cos(this.orbitAngle);
