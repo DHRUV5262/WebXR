@@ -111,21 +111,39 @@ export class IKArmWorld {
             metalness: 0.7
         });
 
-        // Base – industrial pedestal
-        const baseGeom = new THREE.CylinderGeometry(
-            BASE_SIZE[0] * 0.9,
-            BASE_SIZE[0] * 1.1,
-            BASE_SIZE[1],
-            32
-        );
+        // Part 1 — static foot plate (not part of IK chain)
+        const footGeom = new THREE.CylinderGeometry(0.5, 0.6, 0.1, 32);
+        const footMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.3,
+            metalness: 0.9
+        });
+        const footPlate = new THREE.Mesh(footGeom, footMat);
+        // Slightly below the first joint / arm group origin so it sits on the ground visually
+        footPlate.position.y = -BASE_SIZE[1] / 2;
+        this.armGroup.add(footPlate);
+
+        // Part 2 — rotating waist (IK base joint)
+        const baseGeom = new THREE.CylinderGeometry(0.25, 0.35, 0.4, 32);
         const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.4,
-            metalness: 0.7
+            color: 0x3a3a3a,
+            roughness: 0.35,
+            metalness: 0.8
         });
         this.base = new THREE.Mesh(baseGeom, baseMat);
         this.base.position.y = 0;
         this.armGroup.add(this.base);
+
+        // Waist rotation seam ring around the equator
+        const waistRingGeom = new THREE.TorusGeometry(0.3, 0.04, 16, 32);
+        const waistRingMat = new THREE.MeshStandardMaterial({
+            color: 0x3a3a3a,
+            roughness: 0.35,
+            metalness: 0.8
+        });
+        const waistRing = new THREE.Mesh(waistRingGeom, waistRingMat);
+        waistRing.rotation.x = Math.PI / 2;
+        this.base.add(waistRing);
 
         // Joint 0: base ↔ link1
         const joint0 = new THREE.Mesh(jointGeom, jointMat.clone());
