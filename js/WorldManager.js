@@ -47,6 +47,17 @@ export class WorldManager {
         ];
         // Names that always use AR (used if index/config mismatch)
         this.arWorldNames = ['Floating Shapes'];
+
+        // Info panel content per world: { title, content }
+        this.worldInfoTexts = [
+            { title: 'Video in VR', content: '360° video projected on a sphere. Use VR to look around.' },
+            { title: 'Horse', content: 'Animated horse. WASD move camera, Arrow keys rotate.' },
+            { title: 'InDepth Panorama', content: 'Custom shader panorama with depth.' },
+            { title: 'Panorama', content: 'Equirectangular panorama mapping.' },
+            { title: 'Floating Shapes', content: 'Instanced shapes. Click to push. Adjust count with +/-.' },
+            { title: 'Hand Tracking', content: 'WebXR hand tracking. Left pinch = spawn, right pinch = grab.' },
+            { title: 'IK Arm Reach', content: '4-link arm with CCD IK. Drag the orange target with the transform gizmo. A / D keys rotate the camera around the arm. Reset Target to recenter.' }
+        ];
     }
 
     getSessionTypeForWorld(index) {
@@ -167,6 +178,16 @@ export class WorldManager {
                 videoSourceBar.classList.add('visible');
             } else {
                 videoSourceBar.classList.remove('visible');
+            }
+        }
+        const infoPanel = document.getElementById('info-panel');
+        const infoTitle = document.getElementById('info-panel-title');
+        const infoContent = document.getElementById('info-panel-content');
+        if (infoPanel && infoTitle && infoContent) {
+            const info = this.worldInfoTexts[this.currentWorldIndex];
+            if (info) {
+                infoTitle.textContent = info.title;
+                infoContent.textContent = info.content;
             }
         }
     }

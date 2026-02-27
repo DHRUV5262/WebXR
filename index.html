@@ -264,6 +264,40 @@
             opacity: 1;
         }
 
+        /* Info panel - right side, visible in all worlds */
+        #info-panel {
+            position: fixed;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 200px;
+            max-height: 60vh;
+            overflow-y: auto;
+            z-index: 100;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1.5;
+            font-family: 'Poppins', sans-serif;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        #info-panel.visible {
+            opacity: 1;
+        }
+        #info-panel h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #info-panel p {
+            margin: 0;
+            color: rgba(255,255,255,0.9);
+        }
+
     </style>
 </head>
 <body>
@@ -304,6 +338,12 @@
 
     <!-- FPS - top left -->
     <div id="fps-display">FPS: --</div>
+
+    <!-- Info panel - right side (all worlds) -->
+    <div id="info-panel">
+        <h4 id="info-panel-title">World</h4>
+        <p id="info-panel-content">—</p>
+    </div>
 
     <!-- Shape count - top right (Floating Shapes) -->
     <div id="shape-count-bar">

@@ -70,6 +70,8 @@ function init() {
             document.getElementById('world-ui').classList.add('visible');
             const fpsEl = document.getElementById('fps-display');
             if (fpsEl) fpsEl.classList.add('visible');
+            const infoPanel = document.getElementById('info-panel');
+            if (infoPanel) infoPanel.classList.add('visible');
             worldManager.switchWorld(index);
             setupXRButton(index);
         });
