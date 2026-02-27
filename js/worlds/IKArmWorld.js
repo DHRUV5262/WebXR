@@ -20,6 +20,13 @@ const TARGET_SMOOTH = 0.18;         // Lerp factor for target (0=no move, 1=inst
 const ORBIT_RADIUS = 1.8;
 const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
 
+// WebXR teleoperation: operator station behind robot
+const XR_STAGE_OFFSET = new THREE.Vector3(0, -0.3, -2.5);  // scene offset so user sees robot in front
+const XR_NEUTRAL_TARGET_STAGE = new THREE.Vector3(0, 1.35, -0.3);  // neutral target in stage space (in front of arm)
+const HAND_DELTA_SCALE = 1.5;
+const HAND_INDICATOR_RADIUS = 0.04;
+const HAND_INDICATOR_COLOR = 0x3366aa;
+
 // Link dimensions [width, height, depth] – height is along local Y (extend direction)
 const BASE_SIZE = [0.5, 0.3, 0.5];   // base (wider, shorter)
 const LINK1_SIZE = [0.2, 0.5, 0.2];
@@ -82,14 +89,28 @@ export class IKArmWorld {
         // Transform gizmo for dragging the IK target along XYZ axes (desktop)
         this.transformControls = null;
         this.isDraggingGizmo = false;
+
+        // WebXR teleoperation: stage (robot + target in one group, offset in XR)
+        this.xrStageGroup = null;
+        this.handIndicator = null;
+        this._handPosPrev = new THREE.Vector3();
+        this._handPosCurr = new THREE.Vector3();
+        this._xrTargetWorld = new THREE.Vector3();
+        this._xrFirstFrame = true;
+        this._boundRightSelect = null;
     }
 
     enter(scene, renderer, camera) {
         scene.background = new THREE.Color(0x1a1a2e);
+        this.sceneRef = scene;
+
+        // WebXR: stage group so we can offset the whole robot scene (operator behind robot)
+        this.xrStageGroup = new THREE.Group();
+        this.xrStageGroup.position.set(0, 0, 0);
 
         this.armGroup = new THREE.Group();
         this.armGroup.position.set(0, BASE_SIZE[1] / 2, ARM_Z); // Base bottom at y=0
-        scene.add(this.armGroup);
+        this.xrStageGroup.add(this.armGroup);
 
         // Ground plane
         const groundGeom = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
@@ -101,7 +122,7 @@ export class IKArmWorld {
         this.ground = new THREE.Mesh(groundGeom, groundMat);
         this.ground.rotation.x = -Math.PI / 2;
         this.ground.receiveShadow = true;
-        scene.add(this.ground);
+        this.xrStageGroup.add(this.ground);
 
         // Joint sphere geometry (shared) and material – servo knuckles
         const jointGeom = new THREE.SphereGeometry(JOINT_SPHERE_RADIUS * 1.2, 24, 24);
@@ -281,7 +302,19 @@ export class IKArmWorld {
         const targetMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
         this.targetSphere = new THREE.Mesh(targetGeom, targetMat);
         this.targetSphere.position.copy(this.targetPosition);
-        scene.add(this.targetSphere);
+        this.xrStageGroup.add(this.targetSphere);
+        scene.add(this.xrStageGroup);
+
+        // Hand indicator (blue sphere at right hand, WebXR only – in scene so it follows hand in world)
+        const handGeom = new THREE.SphereGeometry(HAND_INDICATOR_RADIUS, 16, 16);
+        const handMat = new THREE.MeshBasicMaterial({
+            color: HAND_INDICATOR_COLOR,
+            transparent: true,
+            opacity: 0.85
+        });
+        this.handIndicator = new THREE.Mesh(handGeom, handMat);
+        this.handIndicator.visible = false;
+        scene.add(this.handIndicator);
 
         // TransformControls gizmo for desktop axis dragging
         this.transformControls = new TransformControls(camera, renderer.domElement);
@@ -317,9 +350,16 @@ export class IKArmWorld {
         this.rendererDomElement = renderer.domElement;
         this.rendererDomElement.addEventListener('pointermove', this.boundPointerMove);
 
-        // WebXR: right controller (for target in VR)
+        // WebXR: right controller (for target in VR) + reset target on select/trigger
         this.rightController = renderer.xr.getController(1);
         scene.add(this.rightController);
+        this._xrFirstFrame = true;
+        this._boundRightSelect = () => {
+            if (!this._xrTargetWorld) return;
+            this._xrTargetWorld.copy(XR_STAGE_OFFSET).add(XR_NEUTRAL_TARGET_STAGE);
+            this.targetSphere.position.copy(this._xrTargetWorld).sub(this.xrStageGroup.position);
+        };
+        this.rightController.addEventListener('select', this._boundRightSelect);
 
         // Debug overlay + Reset button container (top-right, stacked)
         this.ikArmUI = document.createElement('div');
@@ -372,9 +412,17 @@ export class IKArmWorld {
             this.boundPointerMove = null;
             this.rendererDomElement = null;
         }
-        if (this.rightController && this.rightController.parent) {
-            scene.remove(this.rightController);
+        if (this.rightController) {
+            if (this._boundRightSelect) this.rightController.removeEventListener('select', this._boundRightSelect);
+            this._boundRightSelect = null;
+            if (this.rightController.parent) scene.remove(this.rightController);
             this.rightController = null;
+        }
+        if (this.handIndicator) {
+            scene.remove(this.handIndicator);
+            this.handIndicator.geometry.dispose();
+            this.handIndicator.material.dispose();
+            this.handIndicator = null;
         }
         if (this.transformControls) {
             scene.remove(this.transformControls);
@@ -387,14 +435,15 @@ export class IKArmWorld {
             this.debugOverlay = null;
             this.resetButton = null;
         }
+        if (this.xrStageGroup && this.xrStageGroup.parent) scene.remove(this.xrStageGroup);
         if (this.targetSphere) {
-            scene.remove(this.targetSphere);
+            if (this.targetSphere.parent) this.targetSphere.parent.remove(this.targetSphere);
             this.targetSphere.geometry.dispose();
             this.targetSphere.material.dispose();
             this.targetSphere = null;
         }
         if (this.armGroup) {
-            scene.remove(this.armGroup);
+            if (this.armGroup.parent) this.armGroup.parent.remove(this.armGroup);
             this.armGroup.traverse((child) => {
                 if (child.isMesh) {
                     if (child.geometry) child.geometry.dispose();
@@ -407,11 +456,13 @@ export class IKArmWorld {
             this.armGroup = null;
         }
         if (this.ground) {
-            scene.remove(this.ground);
+            if (this.ground.parent) this.ground.parent.remove(this.ground);
             this.ground.geometry.dispose();
             this.ground.material.dispose();
             this.ground = null;
         }
+        this.xrStageGroup = null;
+        this.sceneRef = null;
         this.base = null;
         this.link1 = null;
         this.link2 = null;
@@ -446,11 +497,33 @@ export class IKArmWorld {
 
         // --- Target position source ---
         // Desktop: TransformControls moves targetSphere directly.
-        // WebXR: right controller drives targetSphere in world space.
-        if (renderer.xr.isPresenting && this.rightController) {
-            this.rightController.getWorldPosition(this.targetSphere.position);
+        // WebXR: delta-based teleoperation (hand movement → target offset in robot space).
+        if (renderer.xr.isPresenting && this.rightController && this.xrStageGroup) {
+            this.xrStageGroup.position.copy(XR_STAGE_OFFSET);
+            this.rightController.getWorldPosition(this._handPosCurr);
+
+            if (this.handIndicator) {
+                this.handIndicator.visible = true;
+                this.handIndicator.position.copy(this._handPosCurr);
+            }
+
+            if (this._xrFirstFrame) {
+                this._handPosPrev.copy(this._handPosCurr);
+                this._xrTargetWorld.copy(XR_STAGE_OFFSET).add(XR_NEUTRAL_TARGET_STAGE);
+                this.targetSphere.position.copy(this._xrTargetWorld).sub(this.xrStageGroup.position);
+                this._xrFirstFrame = false;
+            } else {
+                this._currentDir.subVectors(this._handPosCurr, this._handPosPrev);
+                this._xrTargetWorld.addScaledVector(this._currentDir, HAND_DELTA_SCALE);
+                this.targetSphere.position.copy(this._xrTargetWorld).sub(this.xrStageGroup.position);
+                this._handPosPrev.copy(this._handPosCurr);
+            }
+        } else {
+            this.xrStageGroup.position.set(0, 0, 0);
+            if (this.handIndicator) this.handIndicator.visible = false;
+            this._xrFirstFrame = true;
         }
-        this.targetPosition.copy(this.targetSphere.position);
+        this.targetSphere.getWorldPosition(this.targetPosition);
 
         // --- CCD IK (end-effector back to base) ---
         for (let iter = 0; iter < CCD_ITERATIONS; iter++) {
