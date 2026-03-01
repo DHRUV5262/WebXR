@@ -48,12 +48,21 @@ export class WorldManager {
         // Names that always use AR (used if index/config mismatch)
         this.arWorldNames = ['Floating Shapes'];
 
-        // Info panel content per world: { title, content }
+        // Info panel content per world: { title, content } (use \n for line breaks)
         this.worldInfoTexts = [
-            { title: 'Video in VR', content: '360° video projected on a sphere. Use VR to look around.' },
+            {
+                title: 'Video in VR',
+                content: '360° video on a sphere.\n\n• Source: use the dropdown — Static (local file) or Stream (Earth / Waterfall from cloud). Streaming uses chunked delivery so long feeds work without full download.\n\n• Desktop: A / D keys rotate the camera left and right.'
+            },
             { title: 'Horse', content: 'Animated horse. WASD move camera, Arrow keys rotate.' },
-            { title: 'InDepth Panorama', content: 'Custom shader panorama with depth.' },
-            { title: 'Panorama', content: 'Equirectangular panorama mapping.' },
+            {
+                title: 'InDepth Panorama',
+                content: 'Panorama with a depth map for a 3D effect.\n\n• A depth image (grayscale: bright = near, dark = far) is used to displace the sphere geometry. That adds real parallax and improves perceived quality — near and far elements respond correctly when you look around.\n\n• Desktop: scene rotates slowly; in VR you look around naturally.'
+            },
+            {
+                title: 'Panorama',
+                content: 'Single equirectangular 360° image on a sphere.\n\n• Desktop: A / D keys rotate the camera left and right.'
+            },
             { title: 'Floating Shapes', content: 'Instanced shapes. Click to push. Adjust count with +/-.' },
             { title: 'Hand Tracking', content: 'WebXR hand tracking. Left pinch = spawn, right pinch = grab.' },
             { title: 'IK Arm Reach', content: '4-link arm with CCD IK. Drag the orange target with the transform gizmo. A / D keys rotate the camera around the arm. Reset Target to recenter.' }
