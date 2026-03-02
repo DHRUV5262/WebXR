@@ -16,6 +16,8 @@ const TARGET_SPHERE_RADIUS = 0.08;
 const CCD_ITERATIONS = 4;
 const CCD_MAX_ANGLE = Math.PI / 2;  // ±90° clamp
 const CCD_DAMPING = 0.45;           // Scale per-step rotation to reduce jitter/overshoot
+const MAX_REACH_BUFFER = 0.05;      // Buffer inside max reach to avoid unreachable-target jitter
+const EE_TOLERANCE = 0.01;          // Early exit when end-effector within 1 cm of target
 const TARGET_SMOOTH = 0.18;         // Lerp factor for target (0=no move, 1=instant)
 const ORBIT_RADIUS = 1.8;
 const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
@@ -33,6 +35,17 @@ const LINK1_SIZE = [0.2, 0.5, 0.2];
 const LINK2_SIZE = [0.18, 0.45, 0.18];
 const LINK3_SIZE = [0.16, 0.4, 0.16];
 const LINK4_SIZE = [0.14, 0.3, 0.14];
+
+const MAX_REACH = LINK1_SIZE[1] + LINK2_SIZE[1] + LINK3_SIZE[1] + LINK4_SIZE[1];
+const SAFE_REACH = MAX_REACH - MAX_REACH_BUFFER;
+
+// Per-joint max bend from rest (radians): [link3 wrist, link2 elbow, link1 shoulder, base]
+const BEND_LIMITS = [
+    (90 * Math.PI) / 180,   // wrist ~90°
+    (135 * Math.PI) / 180,  // elbow ~135°
+    (120 * Math.PI) / 180,  // shoulder ~120°
+    (360 * Math.PI) / 180   // base full rotation
+];
 
 export class IKArmWorld {
     constructor() {
@@ -77,6 +90,9 @@ export class IKArmWorld {
         this._desiredDir = new THREE.Vector3();
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
+        this._basePos = new THREE.Vector3();
+        this._restQuat = new THREE.Quaternion();  // identity = rest pose for bend limit
+        this._slerpQuat = new THREE.Quaternion();
 
         // Orbit camera around arm (A = left, D = right, desktop only)
         this.orbitAngle = 0;
@@ -536,9 +552,20 @@ export class IKArmWorld {
         }
         this.targetSphere.getWorldPosition(this.targetPosition);
 
-        // --- CCD IK (end-effector back to base) ---
+        // --- Target distance clamping (avoid unreachable positions → jitter) ---
+        this.base.getWorldPosition(this._basePos);
+        const distToTarget = this._basePos.distanceTo(this.targetPosition);
+        if (distToTarget > SAFE_REACH) {
+            this._desiredDir.subVectors(this.targetPosition, this._basePos).normalize();
+            this.targetPosition.copy(this._basePos).addScaledVector(this._desiredDir, SAFE_REACH);
+            this.targetSphere.position.copy(this.targetPosition).sub(this.xrStageGroup.position);
+        }
+
+        // --- CCD IK (end-effector back to base); ball joints with gentle bend limits ---
         for (let iter = 0; iter < CCD_ITERATIONS; iter++) {
             this.endEffectorTip.getWorldPosition(this._eePos);
+
+            if (this._eePos.distanceTo(this.targetPosition) < EE_TOLERANCE) break;
 
             for (let j = 0; j < this.ikJoints.length; j++) {
                 const joint = this.ikJoints[j];
@@ -556,7 +583,6 @@ export class IKArmWorld {
 
                 this._deltaQ.setFromUnitVectors(this._currentDir, this._desiredDir);
 
-                // Clamp rotation to ±90° and damp to reduce jitter
                 const angle = 2 * Math.acos(Math.min(1, Math.abs(this._deltaQ.w)));
                 const clampAngle = Math.min(angle, CCD_MAX_ANGLE) * CCD_DAMPING;
                 if (clampAngle < 1e-6) continue;
@@ -567,6 +593,19 @@ export class IKArmWorld {
                 this._deltaQ.setFromAxisAngle(this._axis, clampAngle);
 
                 joint.quaternion.premultiply(this._deltaQ);
+
+                // Gentle bend limit: max angle from rest (identity); slerp back if over
+                const bendAngle = 2 * Math.acos(Math.min(1, Math.abs(joint.quaternion.w)));
+                const maxBend = BEND_LIMITS[j];
+                if (bendAngle > maxBend && maxBend < Math.PI * 1.99) {
+                    this._slerpQuat.slerpQuaternions(
+                        this._restQuat,
+                        joint.quaternion,
+                        maxBend / bendAngle
+                    );
+                    joint.quaternion.copy(this._slerpQuat);
+                }
+
                 scene.updateMatrixWorld(true);
             }
         }
