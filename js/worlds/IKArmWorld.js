@@ -278,7 +278,8 @@ export class IKArmWorld {
             metalness: 0.7
         });
         const tip = new THREE.Mesh(tipGeom, tipMat);
-        tip.position.y = LINK4_SIZE[1] / 2;
+        // Slightly above link4 end so the cone base clears the joint ring (no overlap)
+        tip.position.y = LINK4_SIZE[1] / 2 + 0.08;
         this.link4.add(tip);
 
         // Lights (added to armGroup so they are removed on exit)
