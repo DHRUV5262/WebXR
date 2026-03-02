@@ -40,11 +40,12 @@ const LINK4_SIZE = [0.14, 0.3, 0.14];
 const MAX_REACH = LINK1_SIZE[1] + LINK2_SIZE[1] + LINK3_SIZE[1] + LINK4_SIZE[1] - MAX_REACH_BUFFER;
 
 // Joint angle limits (radians): hinge constraints per joint [link3, link2, link1, base]
+// number = lock to value; [min,max] = clamp range
 const JOINT_LIMITS = [
-    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },   // link3 wrist
+    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },     // link3 wrist
     { x: [-Math.PI * 3 / 4, Math.PI / 4], y: 0, z: 0 }, // link2 elbow
-    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },   // link1 shoulder
-    { x: 0, y: null, z: 0 }                            // base: Y only (360°)
+    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },     // link1 shoulder
+    { x: 0, y: null, z: 0 }                             // base: Y only (360°), lock X and Z
 ];
 
 export class IKArmWorld {
@@ -598,9 +599,14 @@ export class IKArmWorld {
                 // --- 2. Joint angle limits (hinge constraints) ---
                 this._euler.setFromQuaternion(joint.quaternion);
                 const lim = JOINT_LIMITS[j];
-                if (lim.x !== null) this._euler.x = Math.max(lim.x[0], Math.min(lim.x[1], this._euler.x));
-                if (lim.y !== null) this._euler.y = Math.max(lim.y[0], Math.min(lim.y[1], this._euler.y));
-                if (lim.z !== null) this._euler.z = Math.max(lim.z[0], Math.min(lim.z[1], this._euler.z));
+                const clamp = (val, l) => {
+                    if (typeof l === 'number') return l;
+                    if (Array.isArray(l)) return Math.max(l[0], Math.min(l[1], val));
+                    return val;
+                };
+                this._euler.x = clamp(this._euler.x, lim.x);
+                this._euler.y = clamp(this._euler.y, lim.y);
+                this._euler.z = clamp(this._euler.z, lim.z);
                 joint.quaternion.setFromEuler(this._euler);
 
                 scene.updateMatrixWorld(true);
