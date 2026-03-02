@@ -16,6 +16,8 @@ const TARGET_SPHERE_RADIUS = 0.08;
 const CCD_ITERATIONS = 4;
 const CCD_MAX_ANGLE = Math.PI / 2;  // ±90° clamp
 const CCD_DAMPING = 0.45;           // Scale per-step rotation to reduce jitter/overshoot
+const MAX_REACH_BUFFER = 0.05;     // Buffer inside max reach to avoid straight-line singularity
+const EE_TOLERANCE = 0.01;         // Early exit when end-effector within 1 cm of target
 const TARGET_SMOOTH = 0.18;         // Lerp factor for target (0=no move, 1=instant)
 const ORBIT_RADIUS = 1.8;
 const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
@@ -33,6 +35,17 @@ const LINK1_SIZE = [0.2, 0.5, 0.2];
 const LINK2_SIZE = [0.18, 0.45, 0.18];
 const LINK3_SIZE = [0.16, 0.4, 0.16];
 const LINK4_SIZE = [0.14, 0.3, 0.14];
+
+// Max reach = sum of link lengths (for target distance clamping)
+const MAX_REACH = LINK1_SIZE[1] + LINK2_SIZE[1] + LINK3_SIZE[1] + LINK4_SIZE[1] - MAX_REACH_BUFFER;
+
+// Joint angle limits (radians): hinge constraints per joint [link3, link2, link1, base]
+const JOINT_LIMITS = [
+    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },   // link3 wrist
+    { x: [-Math.PI * 3 / 4, Math.PI / 4], y: 0, z: 0 }, // link2 elbow
+    { x: [-Math.PI / 2, Math.PI / 2], y: 0, z: 0 },   // link1 shoulder
+    { x: 0, y: null, z: 0 }                            // base: Y only (360°)
+];
 
 export class IKArmWorld {
     constructor() {
@@ -77,6 +90,8 @@ export class IKArmWorld {
         this._desiredDir = new THREE.Vector3();
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
+        this._basePos = new THREE.Vector3();
+        this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
         // Orbit camera around arm (A = left, D = right, desktop only)
         this.orbitAngle = 0;
@@ -536,9 +551,21 @@ export class IKArmWorld {
         }
         this.targetSphere.getWorldPosition(this.targetPosition);
 
+        // --- 1. Target distance clamping (keep target inside max reach sphere) ---
+        this.base.getWorldPosition(this._basePos);
+        const distToTarget = this._basePos.distanceTo(this.targetPosition);
+        if (distToTarget > MAX_REACH) {
+            this._desiredDir.subVectors(this.targetPosition, this._basePos).normalize();
+            this.targetPosition.copy(this._basePos).addScaledVector(this._desiredDir, MAX_REACH);
+            this.targetSphere.position.copy(this.targetPosition).sub(this.xrStageGroup.position);
+        }
+
         // --- CCD IK (end-effector back to base) ---
         for (let iter = 0; iter < CCD_ITERATIONS; iter++) {
             this.endEffectorTip.getWorldPosition(this._eePos);
+
+            // --- 3. Early exit when close enough ---
+            if (this._eePos.distanceTo(this.targetPosition) < EE_TOLERANCE) break;
 
             for (let j = 0; j < this.ikJoints.length; j++) {
                 const joint = this.ikJoints[j];
@@ -567,6 +594,15 @@ export class IKArmWorld {
                 this._deltaQ.setFromAxisAngle(this._axis, clampAngle);
 
                 joint.quaternion.premultiply(this._deltaQ);
+
+                // --- 2. Joint angle limits (hinge constraints) ---
+                this._euler.setFromQuaternion(joint.quaternion);
+                const lim = JOINT_LIMITS[j];
+                if (lim.x !== null) this._euler.x = Math.max(lim.x[0], Math.min(lim.x[1], this._euler.x));
+                if (lim.y !== null) this._euler.y = Math.max(lim.y[0], Math.min(lim.y[1], this._euler.y));
+                if (lim.z !== null) this._euler.z = Math.max(lim.z[0], Math.min(lim.z[1], this._euler.z));
+                joint.quaternion.setFromEuler(this._euler);
+
                 scene.updateMatrixWorld(true);
             }
         }
