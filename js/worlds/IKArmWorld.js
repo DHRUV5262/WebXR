@@ -21,7 +21,7 @@ const ORBIT_RADIUS = 1.8;
 const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
 
 // WebXR teleoperation: operator station behind robot
-const XR_STAGE_OFFSET = new THREE.Vector3(0, -0.3, -2.5);  // scene offset so user sees robot in front
+const XR_STAGE_OFFSET = new THREE.Vector3(0, -0.1, -2.5);   // Y: less negative = you feel a bit lower in VR
 const XR_NEUTRAL_TARGET_STAGE = new THREE.Vector3(0, 0.9, -0.5);   // reset position: close in front of arm
 const HAND_DELTA_SCALE = 2.0;  // target moves 2× the distance of your hand (exaggerated)
 const HAND_INDICATOR_RADIUS = 0.04;
@@ -350,16 +350,25 @@ export class IKArmWorld {
         this.rendererDomElement = renderer.domElement;
         this.rendererDomElement.addEventListener('pointermove', this.boundPointerMove);
 
-        // WebXR: right controller (for target in VR) + reset target on select/trigger
-        this.rightController = renderer.xr.getController(1);
-        scene.add(this.rightController);
+        // WebXR: use the controller that reports handedness 'right' for target (not left)
+        this.rightController = null;
+        this._xrControllers = [];
+        for (let i = 0; i <= 1; i++) {
+            const c = renderer.xr.getController(i);
+            this._xrControllers.push(c);
+            scene.add(c);
+            c.addEventListener('connected', (e) => {
+                const handedness = (e.data && e.data.handedness) ? e.data.handedness : '';
+                if (handedness === 'right') this.rightController = c;
+            });
+        }
         this._xrFirstFrame = true;
         this._boundRightSelect = () => {
             if (!this._xrTargetWorld) return;
             this._xrTargetWorld.copy(XR_STAGE_OFFSET).add(XR_NEUTRAL_TARGET_STAGE);
             this.targetSphere.position.copy(this._xrTargetWorld).sub(this.xrStageGroup.position);
         };
-        this.rightController.addEventListener('select', this._boundRightSelect);
+        this._xrControllers.forEach((c) => c.addEventListener('select', this._boundRightSelect));
 
         // Debug overlay + Reset button container (top-right, stacked)
         this.ikArmUI = document.createElement('div');
@@ -412,12 +421,13 @@ export class IKArmWorld {
             this.boundPointerMove = null;
             this.rendererDomElement = null;
         }
-        if (this.rightController) {
-            if (this._boundRightSelect) this.rightController.removeEventListener('select', this._boundRightSelect);
-            this._boundRightSelect = null;
-            if (this.rightController.parent) scene.remove(this.rightController);
-            this.rightController = null;
+        if (this._xrControllers && this._boundRightSelect) {
+            this._xrControllers.forEach((c) => c.removeEventListener('select', this._boundRightSelect));
+            this._xrControllers.forEach((c) => { if (c.parent) scene.remove(c); });
+            this._xrControllers = [];
         }
+        this.rightController = null;
+        this._boundRightSelect = null;
         if (this.handIndicator) {
             scene.remove(this.handIndicator);
             this.handIndicator.geometry.dispose();
