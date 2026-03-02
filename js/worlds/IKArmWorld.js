@@ -22,8 +22,8 @@ const ORBIT_SPEED = 1.4;  // rad/s (A/D rotate around arm)
 
 // WebXR teleoperation: operator station behind robot
 const XR_STAGE_OFFSET = new THREE.Vector3(0, -0.3, -2.5);  // scene offset so user sees robot in front
-const XR_NEUTRAL_TARGET_STAGE = new THREE.Vector3(0, 1.35, -0.3);  // neutral target in stage space (in front of arm)
-const HAND_DELTA_SCALE = 1.5;
+const XR_NEUTRAL_TARGET_STAGE = new THREE.Vector3(0, 0.9, -0.5);   // reset position: close in front of arm
+const HAND_DELTA_SCALE = 1.0;  // 1:1 — target moves same distance and direction as right hand
 const HAND_INDICATOR_RADIUS = 0.04;
 const HAND_INDICATOR_COLOR = 0x3366aa;
 
