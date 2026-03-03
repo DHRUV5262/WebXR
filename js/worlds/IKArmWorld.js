@@ -16,7 +16,13 @@ const TARGET_SPHERE_RADIUS = 0.08;
 const CCD_ITERATIONS = 4;
 const CCD_MAX_ANGLE = Math.PI / 2;  // ±90° clamp
 const CCD_DAMPING = 0.45;           // Scale per-step rotation to reduce jitter/overshoot
-const MAX_REACH_BUFFER = 0.05;      // Buffer inside max reach to avoid unreachable-target jitter
+const MIN_TARGET_DIST = 0.25;       // Target must stay at least this far from base (avoid pass-through)
+
+// Gripper pinch mapping
+const PINCH_CLOSED = 0.02;
+const PINCH_OPEN = 0.08;
+const GRIP_COLOR_OPEN = 0xe86c1a;
+const GRIP_COLOR_CLOSED = 0x00ff88;
 const EE_TOLERANCE = 0.01;          // Early exit when end-effector within 1 cm of target
 const TARGET_SMOOTH = 0.18;         // Lerp factor for target (0=no move, 1=instant)
 const ORBIT_RADIUS = 1.8;
@@ -35,9 +41,6 @@ const LINK1_SIZE = [0.2, 0.5, 0.2];
 const LINK2_SIZE = [0.18, 0.45, 0.18];
 const LINK3_SIZE = [0.16, 0.4, 0.16];
 const LINK4_SIZE = [0.14, 0.3, 0.14];
-
-const MAX_REACH = LINK1_SIZE[1] + LINK2_SIZE[1] + LINK3_SIZE[1] + LINK4_SIZE[1];
-const SAFE_REACH = MAX_REACH - MAX_REACH_BUFFER;
 
 // Per-joint max bend from rest (radians): [link3 wrist, link2 elbow, link1 shoulder, base]
 const BEND_LIMITS = [
@@ -91,6 +94,8 @@ export class IKArmWorld {
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
         this._basePos = new THREE.Vector3();
+        this._pinchA = new THREE.Vector3();
+        this._pinchB = new THREE.Vector3();
         this._restQuat = new THREE.Quaternion();  // identity = rest pose for bend limit
         this._slerpQuat = new THREE.Quaternion();
 
@@ -114,6 +119,12 @@ export class IKArmWorld {
         this._xrTargetWorld = new THREE.Vector3();
         this._xrFirstFrame = true;
         this._boundRightSelect = null;
+
+        this.clawLeft = null;
+        this.clawRight = null;
+        this.gripAmount = 1.0;
+        this.spaceKeyDown = false;
+        this.rightHand = null;
     }
 
     enter(scene, renderer, camera) {
@@ -286,17 +297,25 @@ export class IKArmWorld {
         this.link4.userData.isEndEffector = true; // For later IK/controller target
         this.link3.add(this.link4);
 
-        // Tool / gripper tip – small cone at former end-effector sphere position
-        const tipGeom = new THREE.ConeGeometry(LINK4_SIZE[0] * 0.7, LINK4_SIZE[1] * 0.6, 24);
-        const tipMat = new THREE.MeshStandardMaterial({
-            color: 0xe86c1a,
-            roughness: 0.4,
-            metalness: 0.7
+        // Gripper: two claws + housing, parented to link4 (end-effector)
+        const gripperMat = new THREE.MeshStandardMaterial({
+            color: GRIP_COLOR_OPEN,
+            metalness: 0.7,
+            roughness: 0.3
         });
-        const tip = new THREE.Mesh(tipGeom, tipMat);
-        // Slightly above link4 end so the cone base clears the joint ring (no overlap)
-        tip.position.y = LINK4_SIZE[1] / 2 + 0.08;
-        this.link4.add(tip);
+        const clawGeom = new THREE.BoxGeometry(0.05, 0.15, 0.05);
+        this.clawLeft = new THREE.Mesh(clawGeom, gripperMat.clone());
+        this.clawLeft.position.set(-0.08, 0.1, 0);
+        this.clawLeft.name = 'clawLeft';
+        this.link4.add(this.clawLeft);
+        this.clawRight = new THREE.Mesh(clawGeom.clone(), gripperMat.clone());
+        this.clawRight.position.set(0.08, 0.1, 0);
+        this.clawRight.name = 'clawRight';
+        this.link4.add(this.clawRight);
+        const housingGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 16);
+        const housing = new THREE.Mesh(housingGeom, gripperMat.clone());
+        housing.position.set(0, 0.06, 0);
+        this.link4.add(housing);
 
         // Lights (added to armGroup so they are removed on exit)
         const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
@@ -412,20 +431,26 @@ export class IKArmWorld {
         };
         this.ikArmUI.appendChild(this.resetButton);
 
-        // A/D orbit around arm (desktop)
+        // A/D orbit around arm (desktop); spacebar = gripper close
         this.boundKeyDown = (e) => {
             const k = e.code;
             if (this.isDraggingGizmo) return;
             if (k === 'KeyA') this.orbitKeys.a = true;
             if (k === 'KeyD') this.orbitKeys.d = true;
+            if (k === 'Space') this.spaceKeyDown = true;
         };
         this.boundKeyUp = (e) => {
             const k = e.code;
             if (k === 'KeyA') this.orbitKeys.a = false;
             if (k === 'KeyD') this.orbitKeys.d = false;
+            if (k === 'Space') this.spaceKeyDown = false;
         };
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
+
+        // Right hand for pinch gesture (WebXR hand tracking)
+        this.rightHand = renderer.xr.getHand(1);
+        scene.add(this.rightHand);
     }
 
     exit(scene) {
@@ -445,6 +470,10 @@ export class IKArmWorld {
         }
         this.rightController = null;
         this._boundRightSelect = null;
+        if (this.rightHand && this.rightHand.parent) {
+            scene.remove(this.rightHand);
+            this.rightHand = null;
+        }
         if (this.handIndicator) {
             scene.remove(this.handIndicator);
             this.handIndicator.geometry.dispose();
@@ -552,12 +581,12 @@ export class IKArmWorld {
         }
         this.targetSphere.getWorldPosition(this.targetPosition);
 
-        // --- Target distance clamping (avoid unreachable positions → jitter) ---
+        // --- Minimum target distance from base (avoid target passing through base / jitter) ---
         this.base.getWorldPosition(this._basePos);
         const distToTarget = this._basePos.distanceTo(this.targetPosition);
-        if (distToTarget > SAFE_REACH) {
+        if (distToTarget < MIN_TARGET_DIST && distToTarget > 1e-6) {
             this._desiredDir.subVectors(this.targetPosition, this._basePos).normalize();
-            this.targetPosition.copy(this._basePos).addScaledVector(this._desiredDir, SAFE_REACH);
+            this.targetPosition.copy(this._basePos).addScaledVector(this._desiredDir, MIN_TARGET_DIST);
             this.targetSphere.position.copy(this.targetPosition).sub(this.xrStageGroup.position);
         }
 
@@ -608,6 +637,28 @@ export class IKArmWorld {
 
                 scene.updateMatrixWorld(true);
             }
+        }
+
+        // --- Gripper: pinch (WebXR) or spacebar (desktop) ---
+        if (this.clawLeft && this.clawRight) {
+            if (renderer.xr.isPresenting && this.rightHand && this.rightHand.joints) {
+                const thumbTip = this.rightHand.joints['thumb-tip'];
+                const indexTip = this.rightHand.joints['index-finger-tip'];
+                if (thumbTip && indexTip) {
+                    thumbTip.getWorldPosition(this._pinchA);
+                    indexTip.getWorldPosition(this._pinchB);
+                    const pinchDist = this._pinchA.distanceTo(this._pinchB);
+                    this.gripAmount = Math.max(0, Math.min(1, (pinchDist - PINCH_CLOSED) / (PINCH_OPEN - PINCH_CLOSED)));
+                }
+            } else {
+                this.gripAmount = this.spaceKeyDown ? 0 : 1;
+            }
+            this.clawLeft.position.x = THREE.MathUtils.lerp(-0.03, -0.08, this.gripAmount);
+            this.clawRight.position.x = THREE.MathUtils.lerp(0.03, 0.08, this.gripAmount);
+            const t = this.gripAmount < 0.2 ? 0 : this.gripAmount > 0.8 ? 1 : (this.gripAmount - 0.2) / 0.6;
+            const clawColor = this.clawLeft.material.color;
+            clawColor.setHex(GRIP_COLOR_OPEN).lerp(new THREE.Color(GRIP_COLOR_CLOSED), 1 - t);
+            this.clawRight.material.color.copy(clawColor);
         }
 
         // --- Debug overlay ---
