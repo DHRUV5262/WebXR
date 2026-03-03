@@ -306,11 +306,11 @@ export class IKArmWorld {
         });
         const halfConeGeom = new THREE.ConeGeometry(0.04, 0.2, 8, 1, true);
         this.halfConeLeft = new THREE.Mesh(halfConeGeom, gripperMat.clone());
-        this.halfConeLeft.position.set(-0.04, 0, 0);
+        this.halfConeLeft.position.set(-0.04, 0.08, 0);
         this.halfConeLeft.name = 'halfConeLeft';
         this.link4.add(this.halfConeLeft);
         this.halfConeRight = new THREE.Mesh(halfConeGeom.clone(), gripperMat.clone());
-        this.halfConeRight.position.set(0.04, 0, 0);
+        this.halfConeRight.position.set(0.04, 0.08, 0);
         this.halfConeRight.name = 'halfConeRight';
         this.link4.add(this.halfConeRight);
 
