@@ -120,8 +120,8 @@ export class IKArmWorld {
         this._xrFirstFrame = true;
         this._boundRightSelect = null;
 
-        this.clawLeft = null;
-        this.clawRight = null;
+        this.halfConeLeft = null;
+        this.halfConeRight = null;
         this.gripAmount = 1.0;
         this.spaceKeyDown = false;
         this.rightHand = null;
@@ -297,25 +297,22 @@ export class IKArmWorld {
         this.link4.userData.isEndEffector = true; // For later IK/controller target
         this.link3.add(this.link4);
 
-        // Gripper: two claws + housing, parented to link4 (end-effector)
+        // Gripper: split cone / forceps (two open-ended cone halves), parented to link4 (end-effector)
         const gripperMat = new THREE.MeshStandardMaterial({
             color: GRIP_COLOR_OPEN,
             metalness: 0.7,
-            roughness: 0.3
+            roughness: 0.3,
+            side: THREE.DoubleSide
         });
-        const clawGeom = new THREE.BoxGeometry(0.05, 0.15, 0.05);
-        this.clawLeft = new THREE.Mesh(clawGeom, gripperMat.clone());
-        this.clawLeft.position.set(-0.08, 0.1, 0);
-        this.clawLeft.name = 'clawLeft';
-        this.link4.add(this.clawLeft);
-        this.clawRight = new THREE.Mesh(clawGeom.clone(), gripperMat.clone());
-        this.clawRight.position.set(0.08, 0.1, 0);
-        this.clawRight.name = 'clawRight';
-        this.link4.add(this.clawRight);
-        const housingGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 16);
-        const housing = new THREE.Mesh(housingGeom, gripperMat.clone());
-        housing.position.set(0, 0.06, 0);
-        this.link4.add(housing);
+        const halfConeGeom = new THREE.ConeGeometry(0.04, 0.2, 8, 1, true);
+        this.halfConeLeft = new THREE.Mesh(halfConeGeom, gripperMat.clone());
+        this.halfConeLeft.position.set(-0.04, 0, 0);
+        this.halfConeLeft.name = 'halfConeLeft';
+        this.link4.add(this.halfConeLeft);
+        this.halfConeRight = new THREE.Mesh(halfConeGeom.clone(), gripperMat.clone());
+        this.halfConeRight.position.set(0.04, 0, 0);
+        this.halfConeRight.name = 'halfConeRight';
+        this.link4.add(this.halfConeRight);
 
         // Lights (added to armGroup so they are removed on exit)
         const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
@@ -399,12 +396,6 @@ export class IKArmWorld {
             });
         }
         this._xrFirstFrame = true;
-        this._boundRightSelect = () => {
-            if (!this._xrTargetWorld) return;
-            this._xrTargetWorld.copy(XR_STAGE_OFFSET).add(XR_NEUTRAL_TARGET_STAGE);
-            this.targetSphere.position.copy(this._xrTargetWorld).sub(this.xrStageGroup.position);
-        };
-        this._xrControllers.forEach((c) => c.addEventListener('select', this._boundRightSelect));
 
         // Debug overlay + Reset button container (top-right, stacked)
         this.ikArmUI = document.createElement('div');
@@ -463,8 +454,7 @@ export class IKArmWorld {
             this.boundPointerMove = null;
             this.rendererDomElement = null;
         }
-        if (this._xrControllers && this._boundRightSelect) {
-            this._xrControllers.forEach((c) => c.removeEventListener('select', this._boundRightSelect));
+        if (this._xrControllers) {
             this._xrControllers.forEach((c) => { if (c.parent) scene.remove(c); });
             this._xrControllers = [];
         }
@@ -639,8 +629,8 @@ export class IKArmWorld {
             }
         }
 
-        // --- Gripper: pinch (WebXR) or spacebar (desktop) ---
-        if (this.clawLeft && this.clawRight) {
+        // --- Gripper: split-cone forceps (pinch in XR or spacebar on desktop) ---
+        if (this.halfConeLeft && this.halfConeRight) {
             if (renderer.xr.isPresenting && this.rightHand && this.rightHand.joints) {
                 const thumbTip = this.rightHand.joints['thumb-tip'];
                 const indexTip = this.rightHand.joints['index-finger-tip'];
@@ -653,12 +643,19 @@ export class IKArmWorld {
             } else {
                 this.gripAmount = this.spaceKeyDown ? 0 : 1;
             }
-            this.clawLeft.position.x = THREE.MathUtils.lerp(-0.03, -0.08, this.gripAmount);
-            this.clawRight.position.x = THREE.MathUtils.lerp(0.03, 0.08, this.gripAmount);
+            const spread = THREE.MathUtils.lerp(0.0, 0.06, this.gripAmount);
+            const tilt = THREE.MathUtils.lerp(0.0, Math.PI / 10, this.gripAmount);
+            this.halfConeLeft.position.x = -spread;
+            this.halfConeRight.position.x = spread;
+            this.halfConeLeft.rotation.z = tilt;
+            this.halfConeRight.rotation.z = -tilt;
+
             const t = this.gripAmount < 0.2 ? 0 : this.gripAmount > 0.8 ? 1 : (this.gripAmount - 0.2) / 0.6;
-            const clawColor = this.clawLeft.material.color;
-            clawColor.setHex(GRIP_COLOR_OPEN).lerp(new THREE.Color(GRIP_COLOR_CLOSED), 1 - t);
-            this.clawRight.material.color.copy(clawColor);
+            const colorOpen = new THREE.Color(GRIP_COLOR_OPEN);
+            const colorClosed = new THREE.Color(GRIP_COLOR_CLOSED);
+            const current = colorOpen.clone().lerp(colorClosed, 1 - t);
+            this.halfConeLeft.material.color.copy(current);
+            this.halfConeRight.material.color.copy(current);
         }
 
         // --- Debug overlay ---
