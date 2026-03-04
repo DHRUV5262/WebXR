@@ -449,8 +449,8 @@ export class IKArmWorld {
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
 
-        // Right hand for pinch gesture (WebXR hand tracking)
-        this.rightHand = renderer.xr.getHand(1);
+        // Left hand for pinch gesture (WebXR hand tracking) – controls gripper
+        this.rightHand = renderer.xr.getHand(0);
         scene.add(this.rightHand);
     }
 
