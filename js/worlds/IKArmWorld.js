@@ -99,6 +99,7 @@ export class IKArmWorld {
         this._pinchB = new THREE.Vector3();
         this._restQuat = new THREE.Quaternion();  // identity = rest pose for bend limit
         this._slerpQuat = new THREE.Quaternion();
+        this._localTarget = new THREE.Vector3();
 
         // Orbit camera around arm (A = left, D = right, desktop only)
         this.orbitAngle = 0;
@@ -625,21 +626,29 @@ export class IKArmWorld {
 
                 joint.quaternion.premultiply(this._deltaQ);
 
-                // Joint axis constraints (before bend limit): base=Yaw only, shoulder/elbow=Pitch only, wrist=Pitch+Yaw (ZYX for proper swivel)
+                // Joint axis constraints (before bend limit): base=manual yaw to target, shoulder/elbow=Pitch only, wrist=Pitch+Yaw
                 if (j === 3) {
-                    this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
-                    this._euler.x = 0;
-                    this._euler.z = 0;
-                    joint.quaternion.setFromEuler(this._euler);
+                    // For the base, we want pure yaw (rotation around Y).
+                    // Find where the target is relative to the base's parent (the armGroup)
+                    this.armGroup.worldToLocal(this._localTarget.copy(this.targetPosition));
+
+                    // Calculate the angle in the XZ plane
+                    const targetYaw = Math.atan2(this._localTarget.x, this._localTarget.z);
+
+                    // Apply only the Y rotation to the base
+                    joint.rotation.set(0, targetYaw, 0);
+
+                    // We update the quaternion since CCD relies on it
+                    joint.quaternion.setFromEuler(joint.rotation);
                 } else if (j === 2 || j === 1) {
+                    // Keep existing Pitch-only logic for shoulder/elbow
                     this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
-                    this._euler.y = 0;
-                    this._euler.z = 0;
+                    this._euler.y = 0; this._euler.z = 0;
                     joint.quaternion.setFromEuler(this._euler);
                 } else if (j === 0) {
-                    // For the wrist, use ZYX to decouple pitch and yaw properly
+                    // Keep existing Pitch/Yaw logic for wrist
                     this._euler.setFromQuaternion(joint.quaternion, 'ZYX');
-                    this._euler.z = 0; // lock roll
+                    this._euler.z = 0;
                     joint.quaternion.setFromEuler(this._euler);
                 }
 
