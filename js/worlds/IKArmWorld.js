@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 
 /**
  * IKArmWorld: A 4-link robotic arm made from cubes with visible joint spheres.
@@ -131,6 +132,8 @@ export class IKArmWorld {
         this.gripAmount = 1.0;
         this.spaceKeyDown = false;
         this.rightHand = null;
+        this.rightHandModel = null;
+        this._xrHands = [];
     }
 
     enter(scene, renderer, camera) {
@@ -465,9 +468,24 @@ export class IKArmWorld {
         window.addEventListener('keydown', this.boundKeyDown);
         window.addEventListener('keyup', this.boundKeyUp);
 
-        // Left hand for pinch gesture (WebXR hand tracking) – controls gripper
-        this.rightHand = renderer.xr.getHand(0);
-        scene.add(this.rightHand);
+        // Right hand for pinch gesture (WebXR hand tracking) – controls gripper
+        this._xrHands = [];
+        const handModelFactory = new XRHandModelFactory();
+        for (let i = 0; i < 2; i++) {
+            const hand = renderer.xr.getHand(i);
+            this._xrHands.push(hand);
+            hand.addEventListener('connected', (e) => {
+                const handedness = e.data?.handedness || '';
+                if (handedness === 'right') {
+                    this.rightHand = hand;
+                    if (!this.rightHandModel) {
+                        this.rightHandModel = handModelFactory.createHandModel(hand, 'boxes');
+                        hand.add(this.rightHandModel);
+                    }
+                }
+            });
+            scene.add(hand);
+        }
     }
 
     exit(scene) {
@@ -487,10 +505,14 @@ export class IKArmWorld {
         }
         this.rightController = null;
         this._boundRightSelect = null;
-        if (this.rightHand && this.rightHand.parent) {
-            scene.remove(this.rightHand);
-            this.rightHand = null;
+        if (this._xrHands && this._xrHands.length) {
+            this._xrHands.forEach((hand) => {
+                if (hand.parent) scene.remove(hand);
+            });
+            this._xrHands = [];
         }
+        this.rightHand = null;
+        this.rightHandModel = null;
         if (this.handIndicator) {
             scene.remove(this.handIndicator);
             this.handIndicator.geometry.dispose();
@@ -670,14 +692,14 @@ export class IKArmWorld {
         this.base.rotation.y = Math.atan2(localTarget.x, localTarget.z);
         scene.updateMatrixWorld(true);
 
-        // --- Gripper: pinch (WebXR) or spacebar (desktop) ---
+        // --- Gripper: thumb–middle pinch (WebXR) or spacebar (desktop) ---
         if (this.clawLeft && this.clawRight) {
             if (renderer.xr.isPresenting && this.rightHand && this.rightHand.joints) {
                 const thumbTip = this.rightHand.joints['thumb-tip'];
-                const indexTip = this.rightHand.joints['index-finger-tip'];
-                if (thumbTip && indexTip) {
+                const middleTip = this.rightHand.joints['middle-finger-tip'];
+                if (thumbTip && middleTip) {
                     thumbTip.getWorldPosition(this._pinchA);
-                    indexTip.getWorldPosition(this._pinchB);
+                    middleTip.getWorldPosition(this._pinchB);
                     const pinchDist = this._pinchA.distanceTo(this._pinchB);
                     this.gripAmount = Math.max(0, Math.min(1, (pinchDist - PINCH_CLOSED) / (PINCH_OPEN - PINCH_CLOSED)));
                 }
