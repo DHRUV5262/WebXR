@@ -93,6 +93,7 @@ export class IKArmWorld {
         this._desiredDir = new THREE.Vector3();
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
+        this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
         this._basePos = new THREE.Vector3();
         this._pinchA = new THREE.Vector3();
         this._pinchB = new THREE.Vector3();
@@ -623,6 +624,19 @@ export class IKArmWorld {
                 this._deltaQ.setFromAxisAngle(this._axis, clampAngle);
 
                 joint.quaternion.premultiply(this._deltaQ);
+
+                // Joint axis constraints (before bend limit): base=Yaw only, shoulder/elbow=Pitch only, wrist=Pitch+Yaw
+                this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
+                if (j === 3) {
+                    this._euler.x = 0;
+                    this._euler.z = 0;
+                } else if (j === 2 || j === 1) {
+                    this._euler.y = 0;
+                    this._euler.z = 0;
+                } else if (j === 0) {
+                    this._euler.z = 0;
+                }
+                joint.quaternion.setFromEuler(this._euler);
 
                 // Gentle bend limit: max angle from rest (identity); slerp back if over
                 const bendAngle = 2 * Math.acos(Math.min(1, Math.abs(joint.quaternion.w)));
