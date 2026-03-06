@@ -605,9 +605,12 @@ export class IKArmWorld {
             this.xrStageGroup.position.copy(XR_STAGE_OFFSET);
             this.rightController.getWorldPosition(this._handPosCurr);
 
-            if (this.handIndicator) {
+            // In hand-tracking VR, rely on the cube hand model instead of the blue sphere.
+            if (this.handIndicator && !this.rightHand) {
                 this.handIndicator.visible = true;
                 this.handIndicator.position.copy(this._handPosCurr);
+            } else if (this.handIndicator) {
+                this.handIndicator.visible = false;
             }
 
             if (this._xrFirstFrame) {
