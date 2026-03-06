@@ -93,13 +93,11 @@ export class IKArmWorld {
         this._desiredDir = new THREE.Vector3();
         this._deltaQ = new THREE.Quaternion();
         this._axis = new THREE.Vector3();
-        this._euler = new THREE.Euler(0, 0, 0, 'YXZ');
         this._basePos = new THREE.Vector3();
         this._pinchA = new THREE.Vector3();
         this._pinchB = new THREE.Vector3();
         this._restQuat = new THREE.Quaternion();  // identity = rest pose for bend limit
         this._slerpQuat = new THREE.Quaternion();
-        this._localTarget = new THREE.Vector3();
 
         // Orbit camera around arm (A = left, D = right, desktop only)
         this.orbitAngle = 0;
@@ -625,32 +623,6 @@ export class IKArmWorld {
                 this._deltaQ.setFromAxisAngle(this._axis, clampAngle);
 
                 joint.quaternion.premultiply(this._deltaQ);
-
-                // Joint axis constraints (before bend limit): base=manual yaw to target, shoulder/elbow=Pitch only, wrist=Pitch+Yaw
-                if (j === 3) {
-                    // For the base, we want pure yaw (rotation around Y).
-                    // Find where the target is relative to the base's parent (the armGroup)
-                    this.armGroup.worldToLocal(this._localTarget.copy(this.targetPosition));
-
-                    // Calculate the angle in the XZ plane
-                    const targetYaw = Math.atan2(this._localTarget.x, this._localTarget.z);
-
-                    // Apply only the Y rotation to the base
-                    joint.rotation.set(0, targetYaw, 0);
-
-                    // We update the quaternion since CCD relies on it
-                    joint.quaternion.setFromEuler(joint.rotation);
-                } else if (j === 2 || j === 1) {
-                    // Keep existing Pitch-only logic for shoulder/elbow
-                    this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
-                    this._euler.y = 0; this._euler.z = 0;
-                    joint.quaternion.setFromEuler(this._euler);
-                } else if (j === 0) {
-                    // Keep existing Pitch/Yaw logic for wrist
-                    this._euler.setFromQuaternion(joint.quaternion, 'ZYX');
-                    this._euler.z = 0;
-                    joint.quaternion.setFromEuler(this._euler);
-                }
 
                 // Gentle bend limit: max angle from rest (identity); slerp back if over
                 const bendAngle = 2 * Math.acos(Math.min(1, Math.abs(joint.quaternion.w)));
