@@ -375,7 +375,7 @@ export class IKArmWorld {
         this.link4.add(this.endEffectorTip);
 
         // CCD joints: from end-effector back to base [link3, link2, link1, base]
-        this.ikJoints = [this.link3, this.link2, this.link1, this.base];
+        this.ikJoints = [this.link3, this.link2, this.link1];
 
         // Desktop: mouse → vertical plane (z = ARM_Z)
         this.boundPointerMove = (e) => {
@@ -639,6 +639,12 @@ export class IKArmWorld {
                 scene.updateMatrixWorld(true);
             }
         }
+
+        // After the CCD loop — base yaw: rotate to face target horizontally
+        const localTarget = new THREE.Vector3();
+        this.armGroup.worldToLocal(localTarget.copy(this.targetPosition));
+        this.base.rotation.y = Math.atan2(localTarget.x, localTarget.z);
+        scene.updateMatrixWorld(true);
 
         // --- Gripper: pinch (WebXR) or spacebar (desktop) ---
         if (this.clawLeft && this.clawRight) {
