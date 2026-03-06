@@ -625,18 +625,23 @@ export class IKArmWorld {
 
                 joint.quaternion.premultiply(this._deltaQ);
 
-                // Joint axis constraints (before bend limit): base=Yaw only, shoulder/elbow=Pitch only, wrist=Pitch+Yaw
-                this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
+                // Joint axis constraints (before bend limit): base=Yaw only, shoulder/elbow=Pitch only, wrist=Pitch+Yaw (ZYX for proper swivel)
                 if (j === 3) {
+                    this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
                     this._euler.x = 0;
                     this._euler.z = 0;
+                    joint.quaternion.setFromEuler(this._euler);
                 } else if (j === 2 || j === 1) {
+                    this._euler.setFromQuaternion(joint.quaternion, 'YXZ');
                     this._euler.y = 0;
                     this._euler.z = 0;
+                    joint.quaternion.setFromEuler(this._euler);
                 } else if (j === 0) {
-                    this._euler.z = 0;
+                    // For the wrist, use ZYX to decouple pitch and yaw properly
+                    this._euler.setFromQuaternion(joint.quaternion, 'ZYX');
+                    this._euler.z = 0; // lock roll
+                    joint.quaternion.setFromEuler(this._euler);
                 }
-                joint.quaternion.setFromEuler(this._euler);
 
                 // Gentle bend limit: max angle from rest (identity); slerp back if over
                 const bendAngle = 2 * Math.acos(Math.min(1, Math.abs(joint.quaternion.w)));
