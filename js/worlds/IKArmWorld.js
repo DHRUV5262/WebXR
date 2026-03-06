@@ -99,6 +99,12 @@ export class IKArmWorld {
         this._restQuat = new THREE.Quaternion();  // identity = rest pose for bend limit
         this._slerpQuat = new THREE.Quaternion();
 
+        this._trailPositions = [];
+        this._trailMaxPoints = 200;
+        this._trailLine = null;
+        this._trailPrevPos = new THREE.Vector3();
+        this._trailGeometry = null;
+
         // Orbit camera around arm (A = left, D = right, desktop only)
         this.orbitAngle = 0;
         this.orbitCenter = new THREE.Vector3(0, 0.6, ARM_Z);
@@ -330,6 +336,16 @@ export class IKArmWorld {
         pointLight.position.set(1.0, 1.5, ARM_Z + 0.3);
         this.armGroup.add(pointLight);
 
+        const trailGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(200 * 3);
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        trailGeo.setDrawRange(0, 0);
+        const trailMat = new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 });
+        trailGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(200 * 3), 3));
+        this._trailLine = new THREE.Line(trailGeo, trailMat);
+        this._trailGeometry = trailGeo;
+        this.xrStageGroup.add(this._trailLine);
+
         // Position camera to view arm (desktop: close, centered)
         camera.position.set(0, 1.0, 1.2);
         camera.lookAt(0, 0.6, ARM_Z);
@@ -518,6 +534,14 @@ export class IKArmWorld {
             this.ground.material.dispose();
             this.ground = null;
         }
+        if (this._trailLine) {
+            if (this._trailLine.parent) this._trailLine.parent.remove(this._trailLine);
+            this._trailGeometry.dispose();
+            this._trailLine.material.dispose();
+            this._trailLine = null;
+            this._trailGeometry = null;
+        }
+        this._trailPositions = [];
         this.xrStageGroup = null;
         this.sceneRef = null;
         this.base = null;
@@ -676,5 +700,32 @@ export class IKArmWorld {
         const z = this._eePos.z.toFixed(2);
         const d = dist.toFixed(2);
         this.debugOverlay.textContent = `EE: (${x}, ${y}, ${z})  dist: ${d}`;
+
+        // --- Trail recorder ---
+        this.endEffectorTip.getWorldPosition(this._eePos);
+        const speed = this._trailPrevPos.distanceTo(this._eePos) / Math.max(dt, 0.001);
+        this._trailPrevPos.copy(this._eePos);
+        const error = this._eePos.distanceTo(this.targetPosition);
+        this._trailPositions.push({
+            pos: this._eePos.clone(),
+            error: Math.min(error, 1.5),
+            speed: Math.min(speed, 2.0)
+        });
+        if (this._trailPositions.length > this._trailMaxPoints) {
+            this._trailPositions.shift();
+        }
+        const posAttr = this._trailGeometry.attributes.position;
+        const colAttr = this._trailGeometry.attributes.color;
+        const _c = new THREE.Color();
+        for (let i = 0; i < this._trailPositions.length; i++) {
+            const p = this._trailPositions[i];
+            posAttr.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+            const t = p.error / 1.5;
+            _c.setRGB(Math.min(t * 2, 1.0), Math.max(1.0 - t, 0.0), 0.0);
+            colAttr.setXYZ(i, _c.r, _c.g, _c.b);
+        }
+        posAttr.needsUpdate = true;
+        colAttr.needsUpdate = true;
+        this._trailGeometry.setDrawRange(0, this._trailPositions.length);
     }
 }
