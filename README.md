@@ -1,4 +1,4 @@
-# Interactive WebXR Visualization Platform
+# Interactive WebXR Platform — IK Arm Teleoperation & Multi-World Demos
 
 A modular WebXR & WebGL demo app built with **Three.js**. Pick a world from the landing page and run it in desktop or VR—360° video, depth panoramas, instanced rendering, hand tracking, and a **teleoperated IK arm** with CCD inverse kinematics.
 
