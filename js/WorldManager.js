@@ -68,7 +68,7 @@ export class WorldManager {
             },
             {
                 title: 'IK Arm Reach',
-                content: '4-link arm with CCD inverse kinematics. Orange sphere is the target; arm follows it. Hand tracking in VR drives target and gripper.\n\nWhat this world is\n- Drag the orange target (desktop) or move your right hand (VR) to move the arm.\n- Gripper opens and closes with thumb–middle pinch (VR) or Spacebar (desktop).\n\nControls (Desktop)\n- Drag orange target with the transform gizmo.\n- A / D – Orbit camera around the arm.\n- Spacebar – Close gripper (hold) / open (release).\n- Reset Target – Recenter target.\n\nControls (VR)\n- Right hand position – Moves the target (arm follows).\n- Thumb–middle pinch – Close / open gripper.\n- Controller trigger – Reset target to default position.'
+                content: '4-link arm, CCD IK. Orange sphere = target; arm follows.\n\nControls (Desktop)\n- Gizmo: drag target. A/D: orbit. Spacebar: gripper. Reset: recenter.\n\nControls (VR)\n- Hand: target. Pinch: gripper. Trigger: reset.'
             }
         ];
     }
