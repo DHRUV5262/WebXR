@@ -156,14 +156,4 @@ In `index.html`, inside `#landing-world-buttons`, add a button with `data-world-
 
 After that, your world appears on the landing page and loads when the user clicks it. Use **Switch World** in-app to cycle through all worlds.
 
----
 
-## License
-
-This project is **open source** so you can use it, modify it, and **create new worlds** or fork the repo without asking. The **MIT License** means:
-
-- You can use the code for personal or commercial projects.
-- You can change it and add new worlds.
-- You need to keep the license notice if you redistribute.
-
-No other restrictions. If you add a world, you’re not required to contribute it back—but pull requests with new worlds or fixes are welcome.
