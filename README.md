@@ -2,7 +2,7 @@
 
 A modular WebXR & WebGL demo app built with **Three.js**. Pick a world from the landing page and run it in desktop or VR—360° video, depth panoramas, instanced rendering, hand tracking, and a **teleoperated IK arm** with CCD inverse kinematics.
 
-![WebXR & WebGL Graphics Demos](docs/gif-video-in-vr.gif)
+![WebXR & WebGL Graphics Demos](docs/gif-ik-arm-reach.gif)
 
 ---
 
