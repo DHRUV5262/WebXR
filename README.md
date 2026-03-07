@@ -19,8 +19,6 @@ A modular WebXR & WebGL demo app built with **Three.js**. Pick a world from the 
 | **Hand Tracking** | WebXR hand tracking: left pinch spawn, right pinch grab. Box hand model. |
 | **IK Arm Reach** | 4-link arm with CCD IK. Desktop: gizmo + A/D orbit + Spacebar gripper. VR: right-hand target + thumb–middle pinch gripper + trigger reset. |
 
-*(Add your GIFs in `docs/` and link them below. No GIF for Panorama as requested.)*
-
 #### World previews (add your GIFs here)
 
 | World | Preview |
