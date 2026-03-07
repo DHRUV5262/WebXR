@@ -2,7 +2,7 @@
 
 A modular WebXR & WebGL demo app built with **Three.js**. Pick a world from the landing page and run it in desktop or VR—360° video, depth panoramas, instanced rendering, hand tracking, and a **teleoperated IK arm** with CCD inverse kinematics.
 
-![WebXR & WebGL Graphics Demos](docs/gif-video-in-vr.gif)
+![WebXR & WebGL Graphics Demos](docs/gif-ik-arm-reach.gif)
 
 ---
 
@@ -18,8 +18,6 @@ A modular WebXR & WebGL demo app built with **Three.js**. Pick a world from the 
 | **Floating Shapes** | Instanced meshes for performance (one draw call for many objects). Click to push; +/- count. Optional AR. |
 | **Hand Tracking** | WebXR hand tracking: left pinch spawn, right pinch grab. Box hand model. |
 | **IK Arm Reach** | 4-link arm with CCD IK. Desktop: gizmo + A/D orbit + Spacebar gripper. VR: right-hand target + thumb–middle pinch gripper + trigger reset. |
-
-*(Add your GIFs in `docs/` and link them below. No GIF for Panorama as requested.)*
 
 #### World previews (add your GIFs here)
 
