@@ -77,19 +77,6 @@ WebXR/
 
 ---
 
-## Adding your GIFs
-
-1. Create a `docs/` folder if it doesn’t exist.
-2. Export GIFs with these names (or update the table above):
-   - `gif-video-in-vr.gif`
-   - `gif-indepth-panorama.gif`
-   - `gif-floating-shapes.gif`
-   - `gif-hand-tracking.gif`
-   - `gif-ik-arm-reach.gif`
-3. No GIF for Panorama (as requested).
-
----
-
 ## World Manager: how to add a new world
 
 The app uses a **World Manager** that loads one world at a time. Each world is an isolated 3D environment with its own `enter`, `exit`, and optional `update`. To add a new world:
