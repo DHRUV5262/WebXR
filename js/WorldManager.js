@@ -3,7 +3,6 @@ import { VideoWorld } from './worlds/VideoWorld.js';
 import { FloatingShapesWorld } from './worlds/FloatingShapesWorld.js';
 import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 import { InDepthWorld } from './worlds/InDepthWorld.js';
-import { HorseWorld } from './worlds/HorseWorld.js';
 import { HandTrackingWorld } from './worlds/HandTrackingWorld.js';
 import { IKArmWorld } from './worlds/IKArmWorld.js';
 
@@ -18,7 +17,6 @@ export class WorldManager {
         // Define the cycle of worlds (Video first for sharing/demo)
         this.worldClasses = [
             VideoWorld,
-            HorseWorld,
             InDepthWorld,
             PanoramaWorld,
             FloatingShapesWorld,
@@ -27,7 +25,6 @@ export class WorldManager {
         ];
         this.worldNames = [
             "Video",
-            "Horse",
             "InDepth Panorama",
             "Panorama",
             "Floating Shapes",
@@ -38,12 +35,11 @@ export class WorldManager {
         // Session type per world: 'ar' = AR (real-world passthrough), 'vr' = VR (opaque, grey/solid)
         this.worldSessionTypes = [
             'vr',  // 0 Video
-            'vr',  // 1 Horse
-            'vr',  // 2 InDepth Panorama
-            'vr',  // 3 Panorama
-            'ar',  // 4 Floating Shapes
-            'vr',  // 5 Hand Tracking
-            'vr'   // 6 IK Arm Reach
+            'vr',  // 1 InDepth Panorama
+            'vr',  // 2 Panorama
+            'ar',  // 3 Floating Shapes
+            'vr',  // 4 Hand Tracking
+            'vr'   // 5 IK Arm Reach
         ];
         // Names that always use AR (used if index/config mismatch)
         this.arWorldNames = ['Floating Shapes'];
@@ -52,20 +48,28 @@ export class WorldManager {
         this.worldInfoTexts = [
             {
                 title: 'Video in VR',
-                content: '360° video on a sphere.\n\n• Source: use the dropdown — Static (local file) or Stream (Earth / Waterfall from cloud). Streaming uses chunked delivery so long feeds work without full download.\n\n• Desktop: A / D keys rotate the camera left and right.'
+                content: '360° video wrapped on a sphere around you.\n\nWhat this world is\n- Watch a single 360° clip in an immersive viewer.\n- Switch between local file and streamed presets.\n\nSources\n- Static: load a local 360° video.\n- Stream: pick a preset clip from the dropdown.\n\nControls (Desktop)\n- A – Rotate view left.\n- D – Rotate view right.\n\nControls (VR)\n- Look around to explore the video.'
             },
-            { title: 'Horse', content: 'Animated horse. WASD move camera, Arrow keys rotate.' },
             {
                 title: 'InDepth Panorama',
-                content: 'Panorama with a depth map for a 3D effect.\n\n• A depth image (grayscale: bright = near, dark = far) is used to displace the sphere geometry. That adds real parallax and improves perceived quality — near and far elements respond correctly when you look around.\n\n• Desktop: scene rotates slowly; in VR you look around naturally.'
+                content: 'Panorama with a depth map for a 3D effect. A depth image (grayscale: bright = near, dark = far) displaces the sphere so near and far elements respond correctly when you look around.\n\nControls (Desktop)\n- Scene rotates slowly.\n\nControls (VR)\n- Look around to explore.'
             },
             {
                 title: 'Panorama',
-                content: 'Single equirectangular 360° image on a sphere.\n\n• Desktop: A / D keys rotate the camera left and right.'
+                content: 'Single equirectangular 360° image on a sphere.\n\nControls (Desktop)\n- A – Rotate view left.\n- D – Rotate view right.\n\nControls (VR)\n- Look around to explore.'
             },
-            { title: 'Floating Shapes', content: 'Instanced shapes. Click to push. Adjust count with +/-.' },
-            { title: 'Hand Tracking', content: 'WebXR hand tracking. Left pinch = spawn, right pinch = grab.' },
-            { title: 'IK Arm Reach', content: '4-link arm with CCD IK. Drag the orange target with the transform gizmo. A / D keys rotate the camera around the arm. Reset Target to recenter.' }
+            {
+                title: 'Floating Shapes',
+                content: 'Instancing renders many shapes in one draw call, boosting performance instead of drawing each object individually per frame. Click to push; +/- adjusts count.\n\nControls (Desktop)\n- Click to push shapes. +/- change count.\n\nControls (VR)\n- Use controller to interact. +/- change count.'
+            },
+            {
+                title: 'Hand Tracking',
+                content: 'WebXR hand tracking. Left pinch = spawn sphere; right pinch = grab.\n\nControls (Desktop)\n- Not applicable (hand tracking in VR).\n\nControls (VR)\n- Left pinch at index tip spawns a sphere. Right pinch grabs a sphere.'
+            },
+            {
+                title: 'IK Arm Reach',
+                content: '4-link arm with CCD inverse kinematics. Orange sphere is the target; arm follows it. Hand tracking in VR drives target and gripper.\n\nWhat this world is\n- Drag the orange target (desktop) or move your right hand (VR) to move the arm.\n- Gripper opens and closes with thumb–middle pinch (VR) or Spacebar (desktop).\n\nControls (Desktop)\n- Drag orange target with the transform gizmo.\n- A / D – Orbit camera around the arm.\n- Spacebar – Close gripper (hold) / open (release).\n- Reset Target – Recenter target.\n\nControls (VR)\n- Right hand position – Moves the target (arm follows).\n- Thumb–middle pinch – Close / open gripper.\n- Controller trigger – Reset target to default position.'
+            }
         ];
     }
 
