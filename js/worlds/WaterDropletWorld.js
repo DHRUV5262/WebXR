@@ -3,134 +3,48 @@ import * as THREE from 'three';
 /**
  * WaterDropletWorld
  * 
- * A custom shader world that renders water droplet-like materials.
- * Uses fragment shader to compute:
- * - Fresnel effect (edge glow)
- * - Refraction distortion
- * - Specular highlights
- * - Animated ripples
+ * Dynamic cube map reflections on water droplet-like spheres.
+ * Uses the same technique as Three.js webgl_materials_cubemap_dynamic example:
+ * - CubeCamera renders the scene from the droplet's position into a cube texture
+ * - MeshPhysicalMaterial uses that texture for realistic reflections
+ * - Updated every frame for dynamic reflections (moving objects are reflected)
  * 
- * All shading calculations run in parallel on the GPU (fragment shader).
+ * Also includes:
+ * - Transmission (see-through glass/water effect)
+ * - High clearcoat for wet surface look
+ * - Animated floating objects that get reflected in the droplets
  */
-
-const vertexShader = `
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    varying vec2 vUv;
-    varying vec3 vWorldPosition;
-
-    void main() {
-        vUv = uv;
-        vNormal = normalize(normalMatrix * normal);
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        vViewPosition = -mvPosition.xyz;
-        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * mvPosition;
-    }
-`;
-
-const fragmentShader = `
-    uniform float uTime;
-    uniform vec3 uBaseColor;
-    uniform vec3 uFresnelColor;
-    uniform float uFresnelPower;
-    uniform float uRefractionStrength;
-    uniform samplerCube uEnvMap;
-    uniform float uRippleSpeed;
-    uniform float uRippleScale;
-
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    varying vec2 vUv;
-    varying vec3 vWorldPosition;
-
-    // Simple noise function for ripples
-    float hash(vec2 p) {
-        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-    }
-
-    float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-        float a = hash(i);
-        float b = hash(i + vec2(1.0, 0.0));
-        float c = hash(i + vec2(0.0, 1.0));
-        float d = hash(i + vec2(1.0, 1.0));
-        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-    }
-
-    // Layered noise for water ripple effect
-    float ripple(vec2 uv, float time) {
-        float n = 0.0;
-        n += 0.5 * noise(uv * 4.0 + time * 0.5);
-        n += 0.25 * noise(uv * 8.0 - time * 0.7);
-        n += 0.125 * noise(uv * 16.0 + time * 1.1);
-        return n;
-    }
-
-    void main() {
-        vec3 normal = normalize(vNormal);
-        vec3 viewDir = normalize(vViewPosition);
-
-        // Animated ripple distortion on normal
-        float rippleOffset = ripple(vUv * uRippleScale, uTime * uRippleSpeed);
-        vec3 distortedNormal = normalize(normal + vec3(rippleOffset * 0.1, rippleOffset * 0.1, 0.0));
-
-        // Fresnel effect (edge glow like water droplets)
-        float fresnel = pow(1.0 - max(dot(viewDir, distortedNormal), 0.0), uFresnelPower);
-
-        // Reflection direction for environment
-        vec3 reflectDir = reflect(-viewDir, distortedNormal);
-        
-        // Refraction direction (simplified)
-        vec3 refractDir = refract(-viewDir, distortedNormal, 1.0 / 1.33); // water IOR ~1.33
-
-        // Sample environment map for reflection
-        vec3 envReflect = textureCube(uEnvMap, reflectDir).rgb;
-        vec3 envRefract = textureCube(uEnvMap, refractDir).rgb;
-
-        // Mix refraction and reflection based on fresnel
-        vec3 envColor = mix(envRefract, envReflect, fresnel * 0.5);
-
-        // Specular highlight (Blinn-Phong style)
-        vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-        vec3 halfDir = normalize(viewDir + lightDir);
-        float spec = pow(max(dot(distortedNormal, halfDir), 0.0), 64.0);
-        vec3 specular = vec3(1.0) * spec * 0.8;
-
-        // Combine: base color + environment + fresnel glow + specular
-        vec3 baseContrib = uBaseColor * (1.0 - fresnel * 0.5);
-        vec3 fresnelContrib = uFresnelColor * fresnel * 0.6;
-        vec3 finalColor = baseContrib + envColor * 0.4 + fresnelContrib + specular;
-
-        // Slight transparency variation based on fresnel
-        float alpha = 0.7 + fresnel * 0.3;
-
-        gl_FragColor = vec4(finalColor, alpha);
-    }
-`;
 
 export class WaterDropletWorld {
     constructor() {
         this.object = null;
         this.clock = new THREE.Clock();
         this.droplets = [];
-        this.shaderMaterial = null;
+        this.dropletMaterial = null;
+        this.cubeCamera = null;
+        this.cubeRenderTarget = null;
+        this.floatingObjects = [];
+        this.mainDroplet = null;
     }
 
     enter(scene, renderer) {
         const worldGroup = new THREE.Group();
 
-        // Create a simple environment cube map (procedural gradient)
-        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
-        const cubeCamera = new THREE.CubeCamera(0.1, 100, cubeRenderTarget);
-        
-        // Create a gradient sky sphere for the environment
-        const skyGeo = new THREE.SphereGeometry(50, 32, 32);
+        // Dynamic cube render target for reflections (like the Three.js example)
+        this.cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+        this.cubeRenderTarget.texture.type = THREE.HalfFloatType;
+
+        // CubeCamera at the main droplet's position
+        this.cubeCamera = new THREE.CubeCamera(0.1, 100, this.cubeRenderTarget);
+        worldGroup.add(this.cubeCamera);
+
+        // Sky dome with gradient (environment)
+        const skyGeo = new THREE.SphereGeometry(80, 64, 64);
         const skyMat = new THREE.ShaderMaterial({
             side: THREE.BackSide,
-            uniforms: {},
+            uniforms: {
+                uTime: { value: 0.0 }
+            },
             vertexShader: `
                 varying vec3 vWorldPosition;
                 void main() {
@@ -140,98 +54,179 @@ export class WaterDropletWorld {
                 }
             `,
             fragmentShader: `
+                uniform float uTime;
                 varying vec3 vWorldPosition;
                 void main() {
-                    float y = normalize(vWorldPosition).y;
-                    vec3 skyTop = vec3(0.1, 0.2, 0.4);
-                    vec3 skyBottom = vec3(0.6, 0.7, 0.9);
-                    vec3 color = mix(skyBottom, skyTop, y * 0.5 + 0.5);
+                    vec3 dir = normalize(vWorldPosition);
+                    float y = dir.y;
+                    
+                    // Gradient sky
+                    vec3 skyTop = vec3(0.05, 0.15, 0.35);
+                    vec3 skyHorizon = vec3(0.4, 0.5, 0.7);
+                    vec3 skyBottom = vec3(0.1, 0.1, 0.15);
+                    
+                    vec3 color;
+                    if (y > 0.0) {
+                        color = mix(skyHorizon, skyTop, pow(y, 0.5));
+                    } else {
+                        color = mix(skyHorizon, skyBottom, pow(-y, 0.5));
+                    }
+                    
+                    // Subtle animated clouds/noise
+                    float noise = sin(dir.x * 10.0 + uTime * 0.1) * sin(dir.z * 10.0 - uTime * 0.15) * 0.02;
+                    color += noise;
+                    
                     gl_FragColor = vec4(color, 1.0);
                 }
             `
         });
+        this.skyMaterial = skyMat;
         const skySphere = new THREE.Mesh(skyGeo, skyMat);
         worldGroup.add(skySphere);
 
-        // Update cube camera to capture environment
-        cubeCamera.position.set(0, 1.6, 0);
-        cubeCamera.update(renderer, skySphere);
-
-        // Create shader material for water droplets
-        this.shaderMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                uTime: { value: 0.0 },
-                uBaseColor: { value: new THREE.Color(0.2, 0.5, 0.8) },
-                uFresnelColor: { value: new THREE.Color(0.8, 0.9, 1.0) },
-                uFresnelPower: { value: 3.0 },
-                uRefractionStrength: { value: 0.1 },
-                uEnvMap: { value: cubeRenderTarget.texture },
-                uRippleSpeed: { value: 1.0 },
-                uRippleScale: { value: 3.0 }
-            },
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
-            transparent: true,
-            side: THREE.DoubleSide
+        // Floating objects that will be reflected in the droplets
+        const objectMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff6633,
+            roughness: 0.3,
+            metalness: 0.6
+        });
+        const objectMaterial2 = new THREE.MeshStandardMaterial({
+            color: 0x33ff66,
+            roughness: 0.4,
+            metalness: 0.5
+        });
+        const objectMaterial3 = new THREE.MeshStandardMaterial({
+            color: 0x3366ff,
+            roughness: 0.2,
+            metalness: 0.7
         });
 
-        // Create multiple droplet spheres
-        const dropletGeometry = new THREE.SphereGeometry(0.3, 64, 64);
-        
-        // Main large droplet
-        const mainDroplet = new THREE.Mesh(dropletGeometry, this.shaderMaterial);
-        mainDroplet.position.set(0, 1.6, -2);
-        mainDroplet.scale.set(1.5, 1.2, 1.5); // Slightly flattened like a real droplet
-        worldGroup.add(mainDroplet);
-        this.droplets.push(mainDroplet);
+        // Torus knot
+        const torusKnot = new THREE.Mesh(
+            new THREE.TorusKnotGeometry(0.4, 0.15, 100, 16),
+            objectMaterial
+        );
+        torusKnot.position.set(-2, 2, -3);
+        worldGroup.add(torusKnot);
+        this.floatingObjects.push({ mesh: torusKnot, offset: 0 });
 
-        // Smaller surrounding droplets
+        // Cube
+        const cube = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.6, 0.6),
+            objectMaterial2
+        );
+        cube.position.set(2, 1.8, -2.5);
+        worldGroup.add(cube);
+        this.floatingObjects.push({ mesh: cube, offset: 1 });
+
+        // Icosahedron
+        const ico = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(0.4, 1),
+            objectMaterial3
+        );
+        ico.position.set(0, 2.5, -4);
+        worldGroup.add(ico);
+        this.floatingObjects.push({ mesh: ico, offset: 2 });
+
+        // Small spheres orbiting
+        for (let i = 0; i < 5; i++) {
+            const orbitSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: new THREE.Color().setHSL(i / 5, 0.8, 0.5),
+                    roughness: 0.3,
+                    metalness: 0.5
+                })
+            );
+            orbitSphere.position.set(
+                Math.cos(i * Math.PI * 2 / 5) * 1.5,
+                1.6,
+                -2 + Math.sin(i * Math.PI * 2 / 5) * 1.5
+            );
+            worldGroup.add(orbitSphere);
+            this.floatingObjects.push({ mesh: orbitSphere, offset: i * 0.5, orbit: true, orbitIndex: i });
+        }
+
+        // Main droplet material using MeshPhysicalMaterial for realistic reflections
+        // This uses the dynamic cube map like the Three.js example
+        this.dropletMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x88ccff,
+            envMap: this.cubeRenderTarget.texture,
+            envMapIntensity: 1.0,
+            roughness: 0.0,
+            metalness: 0.0,
+            transmission: 0.9,        // See-through like water/glass
+            thickness: 0.5,           // Refraction thickness
+            ior: 1.33,                // Water's index of refraction
+            clearcoat: 1.0,           // Wet surface shine
+            clearcoatRoughness: 0.0,
+            transparent: true,
+            opacity: 0.95
+        });
+
+        // Main large droplet
+        const dropletGeometry = new THREE.SphereGeometry(0.5, 64, 64);
+        this.mainDroplet = new THREE.Mesh(dropletGeometry, this.dropletMaterial);
+        this.mainDroplet.position.set(0, 1.6, -2);
+        this.mainDroplet.scale.set(1.2, 1.0, 1.2);
+        worldGroup.add(this.mainDroplet);
+        this.droplets.push(this.mainDroplet);
+
+        // Position cube camera at main droplet
+        this.cubeCamera.position.copy(this.mainDroplet.position);
+
+        // Smaller surrounding droplets (share the same envMap for performance)
         const positions = [
-            { x: -1.2, y: 1.2, z: -2.5, s: 0.6 },
-            { x: 1.3, y: 1.4, z: -2.3, s: 0.5 },
-            { x: -0.8, y: 2.1, z: -2.8, s: 0.4 },
-            { x: 0.9, y: 2.0, z: -2.6, s: 0.45 },
-            { x: 0.0, y: 0.8, z: -1.8, s: 0.35 },
-            { x: -1.5, y: 1.8, z: -3.0, s: 0.5 },
-            { x: 1.6, y: 1.0, z: -2.9, s: 0.55 }
+            { x: -1.0, y: 1.3, z: -2.3, s: 0.4 },
+            { x: 1.1, y: 1.4, z: -2.1, s: 0.35 },
+            { x: -0.6, y: 2.0, z: -2.6, s: 0.3 },
+            { x: 0.7, y: 1.9, z: -2.5, s: 0.32 },
+            { x: 0.0, y: 1.0, z: -1.6, s: 0.25 },
+            { x: -1.3, y: 1.7, z: -2.8, s: 0.38 },
+            { x: 1.4, y: 1.1, z: -2.7, s: 0.4 }
         ];
 
         positions.forEach(p => {
-            const droplet = new THREE.Mesh(dropletGeometry, this.shaderMaterial);
+            const droplet = new THREE.Mesh(dropletGeometry, this.dropletMaterial);
             droplet.position.set(p.x, p.y, p.z);
-            const scaleY = p.s * (0.8 + Math.random() * 0.2);
+            const scaleY = p.s * (0.85 + Math.random() * 0.15);
             droplet.scale.set(p.s, scaleY, p.s);
             worldGroup.add(droplet);
             this.droplets.push(droplet);
         });
 
-        // Add a subtle floor plane
-        const floorGeo = new THREE.PlaneGeometry(20, 20);
+        // Floor with slight reflection
+        const floorGeo = new THREE.PlaneGeometry(30, 30);
         const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x333344,
-            roughness: 0.8,
-            metalness: 0.2
+            color: 0x222233,
+            roughness: 0.6,
+            metalness: 0.3
         });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
         worldGroup.add(floor);
 
-        // Add some lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         worldGroup.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        directionalLight.position.set(5, 10, 5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(5, 15, 5);
         worldGroup.add(directionalLight);
 
-        const pointLight = new THREE.PointLight(0x88ccff, 0.5, 10);
-        pointLight.position.set(-2, 3, -2);
-        worldGroup.add(pointLight);
+        const pointLight1 = new THREE.PointLight(0xff8866, 0.8, 15);
+        pointLight1.position.set(-3, 3, -2);
+        worldGroup.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x6688ff, 0.8, 15);
+        pointLight2.position.set(3, 2, -3);
+        worldGroup.add(pointLight2);
 
         scene.add(worldGroup);
         this.object = worldGroup;
-        scene.background = new THREE.Color(0x1a1a2e);
+        this.renderer = renderer;
+        scene.background = null; // Use sky sphere instead
     }
 
     exit(scene) {
@@ -240,28 +235,63 @@ export class WaterDropletWorld {
             this.object.traverse((child) => {
                 if (child.isMesh) {
                     child.geometry.dispose();
-                    if (child.material.dispose) child.material.dispose();
+                    if (child.material) {
+                        if (child.material.dispose) child.material.dispose();
+                    }
                 }
             });
             this.object = null;
         }
+        if (this.cubeRenderTarget) {
+            this.cubeRenderTarget.dispose();
+            this.cubeRenderTarget = null;
+        }
         this.droplets = [];
-        this.shaderMaterial = null;
+        this.floatingObjects = [];
+        this.dropletMaterial = null;
+        this.cubeCamera = null;
+        this.mainDroplet = null;
     }
 
     update(time, frame, renderer, scene, camera) {
         const elapsed = this.clock.getElapsedTime();
 
-        // Update shader time uniform
-        if (this.shaderMaterial) {
-            this.shaderMaterial.uniforms.uTime.value = elapsed;
+        // Update sky animation
+        if (this.skyMaterial) {
+            this.skyMaterial.uniforms.uTime.value = elapsed;
         }
+
+        // Animate floating objects (they will be reflected in the droplets)
+        this.floatingObjects.forEach((obj) => {
+            const mesh = obj.mesh;
+            
+            if (obj.orbit) {
+                // Orbiting spheres
+                const angle = elapsed * 0.5 + obj.orbitIndex * Math.PI * 2 / 5;
+                mesh.position.x = Math.cos(angle) * 1.8;
+                mesh.position.z = -2 + Math.sin(angle) * 1.8;
+                mesh.position.y = 1.6 + Math.sin(elapsed * 2 + obj.offset) * 0.3;
+            } else {
+                // Floating objects
+                mesh.position.y += Math.sin(elapsed * 0.8 + obj.offset) * 0.002;
+                mesh.rotation.x = elapsed * 0.3 + obj.offset;
+                mesh.rotation.y = elapsed * 0.5 + obj.offset;
+            }
+        });
 
         // Gentle floating animation for droplets
         this.droplets.forEach((droplet, i) => {
-            const offset = i * 0.5;
-            droplet.position.y += Math.sin(elapsed * 0.8 + offset) * 0.001;
-            droplet.rotation.y = elapsed * 0.1 + offset;
+            if (i === 0) return; // Don't move main droplet
+            const offset = i * 0.7;
+            droplet.position.y += Math.sin(elapsed * 0.6 + offset) * 0.0008;
         });
+
+        // Update cube camera to capture dynamic reflections
+        // Hide the main droplet temporarily so it doesn't reflect itself
+        if (this.mainDroplet && this.cubeCamera && this.renderer) {
+            this.mainDroplet.visible = false;
+            this.cubeCamera.update(this.renderer, scene);
+            this.mainDroplet.visible = true;
+        }
     }
 }

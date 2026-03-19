@@ -76,7 +76,7 @@ export class WorldManager {
             },
             {
                 title: 'Water Droplets',
-                content: 'Custom GPU shaders for water droplet material.\n\nShader Features:\n- Fresnel effect (edge glow)\n- Refraction (light bending through water, IOR 1.33)\n- Animated ripples (layered noise)\n- Specular highlights\n- Environment reflection/refraction\n\nAll shading runs in parallel on the GPU (fragment shader). Droplets float gently and reflect the environment.'
+                content: 'Dynamic cube map reflections (like Three.js webgl_materials_cubemap_dynamic).\n\nHow it works:\n- CubeCamera renders the scene into a cube texture from the droplet\'s view\n- MeshPhysicalMaterial uses that texture for reflections\n- Updated every frame so moving objects are reflected in real-time\n\nMaterial Features:\n- Transmission (see-through like water)\n- IOR 1.33 (water refraction)\n- Clearcoat (wet surface shine)\n\nFloating objects orbit and get reflected dynamically in the droplets.'
             }
         ];
     }
