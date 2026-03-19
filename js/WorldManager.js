@@ -5,6 +5,7 @@ import { ARPhysicsWorld } from './worlds/ARPhysicsWorld.js';
 import { InDepthWorld } from './worlds/InDepthWorld.js';
 import { HandTrackingWorld } from './worlds/HandTrackingWorld.js';
 import { IKArmWorld } from './worlds/IKArmWorld.js';
+import { WaterDropletWorld } from './worlds/WaterDropletWorld.js';
 
 export class WorldManager {
     constructor(scene, renderer, camera) {
@@ -21,7 +22,8 @@ export class WorldManager {
             PanoramaWorld,
             FloatingShapesWorld,
             HandTrackingWorld,
-            IKArmWorld
+            IKArmWorld,
+            WaterDropletWorld
         ];
         this.worldNames = [
             "Video",
@@ -29,7 +31,8 @@ export class WorldManager {
             "Panorama",
             "Floating Shapes",
             "Hand Tracking",
-            "IK Arm Reach"
+            "IK Arm Reach",
+            "Water Droplets"
         ];
 
         // Session type per world: 'ar' = AR (real-world passthrough), 'vr' = VR (opaque, grey/solid)
@@ -39,7 +42,8 @@ export class WorldManager {
             'vr',  // 2 Panorama
             'ar',  // 3 Floating Shapes
             'vr',  // 4 Hand Tracking
-            'vr'   // 5 IK Arm Reach
+            'vr',  // 5 IK Arm Reach
+            'vr'   // 6 Water Droplets
         ];
         // Names that always use AR (used if index/config mismatch)
         this.arWorldNames = ['Floating Shapes'];
@@ -69,6 +73,10 @@ export class WorldManager {
             {
                 title: 'IK Arm Reach',
                 content: '4-link arm, CCD IK. Orange sphere = target; arm follows.\n\nControls (Desktop)\n- Gizmo: drag target. A/D: orbit. Spacebar: gripper. Reset: recenter.\n\nControls (VR)\n- Hand: target. Pinch: gripper. Trigger: reset.'
+            },
+            {
+                title: 'Water Droplets',
+                content: 'Custom GPU shaders for water droplet material.\n\nShader Features:\n- Fresnel effect (edge glow)\n- Refraction (light bending through water, IOR 1.33)\n- Animated ripples (layered noise)\n- Specular highlights\n- Environment reflection/refraction\n\nAll shading runs in parallel on the GPU (fragment shader). Droplets float gently and reflect the environment.'
             }
         ];
     }
